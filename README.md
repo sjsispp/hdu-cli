@@ -16,6 +16,9 @@ npm run dev -- job talks --query "人工智能" --json
 npm run dev -- job fairs --json
 npm run dev -- job positions --type intern --query "算法" --json
 npm run dev -- job get "https://job.hdu.edu.cn/job/view?id=..." --json
+npm run dev -- service phones --query "教务处" --json
+npm run dev -- service buses --campus xiasha --json
+npm run dev -- service class-times --campus qingshanhu --json
 ```
 
 构建并作为本地命令使用：
@@ -55,6 +58,25 @@ hdu auth logout
 
 认证不会开放写操作；当前 CLI 不会投递简历、收藏岗位或报名活动。非 macOS 环境可以临时通过 `HDU_JOB_COOKIE` 提供会话。
 
+### 主站服务信息
+
+```bash
+# 图书馆、档案馆、校医院、后勤、安全保卫等入口
+hdu service links --json
+
+# 办公电话；可按机构、岗位或号码检索
+hdu service phones --query "教务处" --json
+hdu service phones --category academic --json
+
+# 工作班车：xiasha / shaoxing
+hdu service buses --campus xiasha --json
+
+# 上课时间：xiasha / shaoxing / qingshanhu
+hdu service class-times --campus qingshanhu --json
+```
+
+办公电话的分类参数包括 `all`、`administration`、`academic`、`support`、`affiliated` 和 `research`。班车结果保留主站发布的运行日期、停运提示、发车时间、车型和完整线路；遇到临时调整时应以学校最新通知为准。
+
 `npm link` 会把当前项目注册为本机的 `hdu` 命令。可用下面的命令确认 Codex 所在终端能够找到它：
 
 ```bash
@@ -85,5 +107,6 @@ npm run test:live
 - 全职与实习岗位搜索
 - 就业网详情与附件提取
 - 浏览器辅助统一身份认证与 macOS 钥匙串会话存储
+- 主站服务入口、办公电话、工作班车和三个校区上课时间
 
 后续计划扩展教务处、研究生院和教师主页，并在数据模型稳定后增加 MCP 入口。
