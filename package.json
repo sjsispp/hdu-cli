@@ -6,9 +6,14 @@
   "bin": {
     "hdu": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx src/cli.ts",
+    "prepack": "npm run build",
     "test": "vitest run",
     "test:live": "HDU_LIVE_TEST=1 vitest run tests/live.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
