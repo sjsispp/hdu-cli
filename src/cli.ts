@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { clearJobSession, jobAuthStatus, loginToJobSite } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
-import { printArticle, printDeadlines, printJson, printList, printSearch } from "./output.js";
+import { printArticle, printDeadlines, printJobArticle, printJobList, printJson, printList, printSearch } from "./output.js";
+import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
-import type { ArticleDeadlines, MainSiteSection } from "./types.js";
+import type { ArticleDeadlines, JobPositionType, JobSiteSection, MainSiteSection } from "./types.js";
 
 const program = new Command();
-program.name("hdu").description("查询杭州电子科技大学公开信息").version("0.1.0");
+program.name("hdu").description("查询杭州电子科技大学公开信息").version("0.2.0");
 
 function positiveInteger(value: string): number {
   const parsed = Number(value);
@@ -30,6 +32,62 @@ function addListCommand(parentName: string, section: MainSiteSection, descriptio
 addListCommand("notice", "notices", "学校通知公告");
 addListCommand("event", "events", "讲座与论坛");
 addListCommand("news", "news", "杭电新闻");
+
+const job = program.command("job").description("杭电就业网公开招聘信息");
+
+function addJobListCommand(name: string, section: JobSiteSection, description: string): void {
+  job.command(name).description(description)
+    .option("-p, --page <number>", "页码", positiveInteger, 1)
+    .option("-l, --limit <number>", "最多返回数量", positiveInteger, 20)
+    .option("-q, --query <keyword>", "关键词")
+    .option("--json", "输出 JSON")
+    .action(async (options) => {
+      const result = await listJobSite(section, options);
+      options.json ? printJson(result) : printJobList(result);
+    });
+}
+
+addJobListCommand("notices", "notices", "招聘公告");
+addJobListCommand("talks", "talks", "校园宣讲会");
+addJobListCommand("fairs", "fairs", "招聘会与双选会");
+
+job.command("positions").description("全职与实习岗位")
+  .option("-p, --page <number>", "页码", positiveInteger, 1)
+  .option("-l, --limit <number>", "最多返回数量", positiveInteger, 20)
+  .option("-q, --query <keyword>", "岗位名或公司名")
+  .option("-t, --type <type>", "all、fulltime 或 intern", "all")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    if (!["all", "fulltime", "intern"].includes(options.type)) throw new Error("Position type must be all, fulltime, or intern.");
+    const result = await listJobSite("positions", { ...options, type: options.type as JobPositionType });
+    options.json ? printJson(result) : printJobList(result);
+  });
+
+job.command("get").description("读取就业网详情")
+  .argument("<url>", "job.hdu.edu.cn 详情地址")
+  .option("--json", "输出 JSON")
+  .action(async (url, options) => {
+    const article = await getJobSiteArticle(url);
+    options.json ? printJson(article) : printJobArticle(article);
+  });
+
+const auth = program.command("auth").description("杭电统一身份认证会话");
+auth.command("login").description("在浏览器中登录并将就业网会话保存到系统钥匙串")
+  .option("--timeout <seconds>", "等待登录的秒数", positiveInteger, 300)
+  .action(async (options) => {
+    console.log("请在打开的浏览器中完成杭电统一身份认证；CLI 不会读取或保存你的密码。");
+    await loginToJobSite(options.timeout * 1000);
+    console.log("登录成功，就业网会话已保存到 macOS 钥匙串。");
+  });
+auth.command("status").description("检查就业网登录状态")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const status = await jobAuthStatus();
+    options.json ? printJson(status) : console.log(status.authenticated ? `已登录（${status.storage}）` : "未登录或会话已过期");
+  });
+auth.command("logout").description("删除本机保存的就业网会话").action(async () => {
+  console.log((await clearJobSession()) ? "已从 macOS 钥匙串删除就业网会话。" : "没有找到已保存的就业网会话。");
+});
 
 program
   .command("search")

@@ -1,4 +1,4 @@
-import type { Article, ArticleDeadlines, ListItem, ListResult } from "./types.js";
+import type { Article, ArticleDeadlines, JobSiteArticle, JobSiteListResult, ListItem, ListResult } from "./types.js";
 
 export function printJson(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
@@ -45,5 +45,30 @@ export function printDeadlines(results: ArticleDeadlines[]): void {
     console.log(result.article.title);
     console.log(`  ${result.article.url}`);
     for (const match of result.matches) console.log(`  - ${match.rawDate}: ${match.evidence}`);
+  }
+}
+
+export function printJobList(result: JobSiteListResult): void {
+  console.log(`杭电就业网 · ${result.section} · 第 ${result.page}/${result.totalPages ?? "?"} 页${result.authenticated ? " · 已登录" : ""}`);
+  if (result.items.length === 0) {
+    console.log("没有找到结果。");
+    return;
+  }
+  for (const item of result.items) {
+    const details = [item.publishedAt ?? item.startsAt, item.company, item.location, item.salary, item.education]
+      .filter(Boolean).join(" · ");
+    console.log(`${details || "信息未注明"}  ${item.title}`);
+    console.log(`  ${item.url}`);
+  }
+}
+
+export function printJobArticle(article: JobSiteArticle): void {
+  console.log(article.title);
+  console.log(`${article.url}${article.authenticated ? " · 已登录" : ""}`);
+  for (const [key, value] of Object.entries(article.metadata)) console.log(`${key}: ${value}`);
+  if (article.content) console.log(`\n${article.content}`);
+  if (article.attachments.length > 0) {
+    console.log("\n附件：");
+    for (const attachment of article.attachments) console.log(`- ${attachment.title}: ${attachment.url}`);
   }
 }

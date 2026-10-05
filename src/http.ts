@@ -15,7 +15,7 @@ export function isAllowedHduUrl(value: string): boolean {
 
 export async function fetchText(
   url: string,
-  options: { timeoutMs?: number; retries?: number } = {}
+  options: { timeoutMs?: number; retries?: number; cookie?: string } = {}
 ): Promise<string> {
   if (!isAllowedHduUrl(url)) {
     throw new Error(`Refusing to fetch a non-HDU URL: ${url}`);
@@ -33,7 +33,8 @@ export async function fetchText(
       const response = await fetch(url, {
         headers: {
           "user-agent": USER_AGENT,
-          accept: "text/html,application/xhtml+xml"
+          accept: "text/html,application/xhtml+xml",
+          ...(options.cookie ? { cookie: options.cookie } : {})
         },
         redirect: "follow",
         signal: controller.signal

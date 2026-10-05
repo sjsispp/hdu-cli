@@ -44,3 +44,42 @@ export interface ArticleDeadlines {
   article: Pick<Article, "id" | "title" | "publishedAt" | "url">;
   matches: DeadlineMatch[];
 }
+
+export type JobSiteSection = "notices" | "talks" | "fairs" | "positions";
+export type JobPositionType = "all" | "fulltime" | "intern";
+
+export interface JobSiteItem {
+  id: string;
+  source: "hdu-job";
+  section: JobSiteSection;
+  title: string;
+  url: string;
+  publishedAt?: string;
+  company?: string;
+  location?: string;
+  startsAt?: string;
+  mode?: string;
+  salary?: string;
+  positionType?: string;
+  education?: string;
+}
+
+export interface JobSiteListResult {
+  source: "hdu-job";
+  section: JobSiteSection;
+  page: number;
+  totalPages?: number;
+  authenticated: boolean;
+  items: JobSiteItem[];
+}
+
+export interface JobSiteArticle {
+  id: string;
+  source: "hdu-job";
+  title: string;
+  url: string;
+  content: string;
+  metadata: Record<string, string>;
+  attachments: Attachment[];
+  authenticated: boolean;
+}
