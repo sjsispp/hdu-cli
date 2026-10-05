@@ -1,4 +1,7 @@
-import type { Article, ArticleDeadlines, JobSiteArticle, JobSiteListResult, ListItem, ListResult } from "./types.js";
+import type {
+  Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
+  ListItem, ListResult, PhoneOffice, ServiceLink
+} from "./types.js";
 
 export function printJson(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
@@ -71,4 +74,29 @@ export function printJobArticle(article: JobSiteArticle): void {
     console.log("\n附件：");
     for (const attachment of article.attachments) console.log(`- ${attachment.title}: ${attachment.url}`);
   }
+}
+
+export function printServiceLinks(items: ServiceLink[]): void {
+  for (const item of items) console.log(`${item.name}\n  ${item.url}`);
+}
+
+export function printPhones(offices: PhoneOffice[]): void {
+  if (offices.length === 0) return console.log("没有找到匹配的办公电话。");
+  for (const office of offices) {
+    console.log(`${office.name} · ${office.categoryName}`);
+    for (const contact of office.contacts) console.log(`  ${contact.role}: ${contact.phone}`);
+  }
+}
+
+export function printBusSchedule(schedule: BusSchedule): void {
+  for (const note of schedule.notes) console.log(`提示：${note}`);
+  for (const trip of schedule.trips) {
+    console.log(`${trip.time} · ${trip.schedule ?? "日期未注明"} · ${trip.direction}`);
+    console.log(`  ${trip.route}${trip.vehicle ? ` · ${trip.vehicle}` : ""}`);
+  }
+}
+
+export function printClassSchedule(schedule: ClassSchedule): void {
+  console.log(`${schedule.campus} 校区上课时间`);
+  for (const period of schedule.periods) console.log(`${period.session} · ${period.name}: ${period.time}`);
 }

@@ -83,3 +83,59 @@ export interface JobSiteArticle {
   attachments: Attachment[];
   authenticated: boolean;
 }
+
+export type PhoneCategory = "all" | "administration" | "academic" | "support" | "affiliated" | "research";
+export type BusCampus = "xiasha" | "shaoxing";
+export type ClassCampus = BusCampus | "qingshanhu";
+
+export interface ServiceLink {
+  name: string;
+  url: string;
+}
+
+export interface PhoneContact {
+  role: string;
+  phone: string;
+}
+
+export interface PhoneOffice {
+  id: string;
+  category: Exclude<PhoneCategory, "all">;
+  categoryName: string;
+  name: string;
+  contacts: PhoneContact[];
+  url: string;
+}
+
+export interface BusTrip {
+  campus: BusCampus;
+  section?: string;
+  schedule?: string;
+  direction: string;
+  time: string;
+  vehicle?: string;
+  route: string;
+  url: string;
+}
+
+export interface BusSchedule {
+  source: "hdu-main";
+  campus: BusCampus;
+  notes: string[];
+  trips: BusTrip[];
+  url: string;
+}
+
+export interface ClassPeriod {
+  campus: ClassCampus;
+  session: string;
+  name: string;
+  time: string;
+}
+
+export interface ClassSchedule {
+  source: "hdu-main";
+  campus: ClassCampus;
+  periods: ClassPeriod[];
+  url: string;
+}

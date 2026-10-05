@@ -1,6 +1,6 @@
 {
   "name": "hdu-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A safe, structured CLI for public Hangzhou Dianzi University information.",
   "type": "module",
   "bin": {

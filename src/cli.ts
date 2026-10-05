@@ -2,13 +2,19 @@
 import { Command } from "commander";
 import { clearJobSession, jobAuthStatus, loginToJobSite } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
-import { printArticle, printDeadlines, printJobArticle, printJobList, printJson, printList, printSearch } from "./output.js";
+import {
+  printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
+  printJson, printList, printPhones, printSearch, printServiceLinks
+} from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
-import type { ArticleDeadlines, JobPositionType, JobSiteSection, MainSiteSection } from "./types.js";
+import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "./sources/service-info.js";
+import type {
+  ArticleDeadlines, BusCampus, ClassCampus, JobPositionType, JobSiteSection, MainSiteSection, PhoneCategory
+} from "./types.js";
 
 const program = new Command();
-program.name("hdu").description("查询杭州电子科技大学公开信息").version("0.2.0");
+program.name("hdu").description("查询杭州电子科技大学公开信息").version("0.3.0");
 
 function positiveInteger(value: string): number {
   const parsed = Number(value);
@@ -88,6 +94,45 @@ auth.command("status").description("检查就业网登录状态")
 auth.command("logout").description("删除本机保存的就业网会话").action(async () => {
   console.log((await clearJobSession()) ? "已从 macOS 钥匙串删除就业网会话。" : "没有找到已保存的就业网会话。");
 });
+
+const service = program.command("service").description("主站服务信息");
+service.command("links").description("列出图书馆、档案馆、校医院等服务入口")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const result = await listServiceLinks();
+    options.json ? printJson(result) : printServiceLinks(result.items);
+  });
+
+service.command("phones").description("查询学校办公电话")
+  .option("-c, --category <category>", "all、administration、academic、support、affiliated 或 research", "all")
+  .option("-q, --query <keyword>", "机构、岗位或电话号码关键词")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const categories = ["all", "administration", "academic", "support", "affiliated", "research"];
+    if (!categories.includes(options.category)) throw new Error(`Phone category must be one of: ${categories.join(", ")}.`);
+    const result = await listPhones({ category: options.category as PhoneCategory, query: options.query });
+    options.json ? printJson(result) : printPhones(result.offices);
+  });
+
+service.command("buses").description("查询工作班车")
+  .requiredOption("-c, --campus <campus>", "xiasha 或 shaoxing")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    if (!["xiasha", "shaoxing"].includes(options.campus)) throw new Error("Bus campus must be xiasha or shaoxing.");
+    const result = await getBusSchedule(options.campus as BusCampus);
+    options.json ? printJson(result) : printBusSchedule(result);
+  });
+
+service.command("class-times").description("查询校区上课时间")
+  .requiredOption("-c, --campus <campus>", "xiasha、shaoxing 或 qingshanhu")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    if (!["xiasha", "shaoxing", "qingshanhu"].includes(options.campus)) {
+      throw new Error("Class campus must be xiasha, shaoxing, or qingshanhu.");
+    }
+    const result = await getClassSchedule(options.campus as ClassCampus);
+    options.json ? printJson(result) : printClassSchedule(result);
+  });
 
 program
   .command("search")
