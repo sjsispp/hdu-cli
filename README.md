@@ -21,6 +21,15 @@ npm link
 hdu notice list
 ```
 
+`npm link` 会把当前项目注册为本机的 `hdu` 命令。可用下面的命令确认 Codex 所在终端能够找到它：
+
+```bash
+command -v hdu
+hdu --version
+```
+
+本项目同时提供了 `AGENTS.md`，当 Codex 在此仓库中工作时，会获知应优先使用 `hdu ... --json` 查询杭电公开信息。
+
 ## 测试
 
 ```bash
