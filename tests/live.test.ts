@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getArticle, listSection } from "../src/sources/main-site.js";
 import { getJobSiteArticle, listJobSite } from "../src/sources/job-site.js";
+import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "../src/sources/service-info.js";
 
 const live = process.env.HDU_LIVE_TEST === "1";
 
@@ -36,5 +37,22 @@ describe.runIf(live)("HDU employment site live integration", () => {
     const article = await getJobSiteArticle(result.items[0]!.url);
     expect(article.title.length).toBeGreaterThan(1);
     expect(article.content.length).toBeGreaterThan(10);
+  });
+});
+
+describe.runIf(live)("HDU main site service information", () => {
+  it("reads service links and phone directory", async () => {
+    const [links, phones] = await Promise.all([
+      listServiceLinks(), listPhones({ category: "administration", query: "教务处" })
+    ]);
+    expect(links.items.some((item) => item.name === "图书馆")).toBe(true);
+    expect(phones.offices.some((office) => office.name.includes("教务处"))).toBe(true);
+  });
+
+  it("reads bus and class schedules", async () => {
+    const [buses, classes] = await Promise.all([getBusSchedule("xiasha"), getClassSchedule("xiasha")]);
+    expect(buses.trips.length).toBeGreaterThan(0);
+    expect(buses.trips[0]?.time).toMatch(/\d{1,2}:\d{2}/);
+    expect(classes.periods.some((period) => period.name === "第一节")).toBe(true);
   });
 });
