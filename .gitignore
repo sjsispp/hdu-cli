@@ -6,4 +6,5 @@ coverage/
 # job-digest 本地状态与密钥
 scripts/job-digest/config.json
 scripts/job-digest/seen.json
+scripts/job-digest/state.json
 scripts/job-digest/logs/

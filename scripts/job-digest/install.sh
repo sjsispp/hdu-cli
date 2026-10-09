@@ -47,12 +47,11 @@ fi
 
 mkdir -p "$AGENTS_DIR" "$LOG_DIR"
 
+# 采用「轮询」而非固定时刻触发：每 interval 秒唤起一次，由脚本内的守卫决定是否真正发送
+# （每天/每周只发一次，且早于发送时间或网络未就绪时安静跳过）。这样无论几点开机、
+# 几点连上网（如热点），当天第一次有网时就会发送。
 write_plist() {
-  local label="$1" profile="$2" hour="$3" minute="$4" weekday="$5"
-  local weekday_entry=""
-  if [[ -n "$weekday" ]]; then
-    weekday_entry="    <key>Weekday</key><integer>$weekday</integer>"
-  fi
+  local label="$1" profile="$2" interval="$3"
   cat > "$AGENTS_DIR/$label.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -66,12 +65,8 @@ write_plist() {
     <string>$profile</string>
   </array>
   <key>WorkingDirectory</key><string>$REPO_DIR</string>
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key><integer>$hour</integer>
-    <key>Minute</key><integer>$minute</integer>
-$weekday_entry
-  </dict>
+  <key>StartInterval</key><integer>$interval</integer>
+  <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$LOG_DIR/$profile.log</string>
   <key>StandardErrorPath</key><string>$LOG_DIR/$profile.log</string>
 </dict>
@@ -79,12 +74,11 @@ $weekday_entry
 PLIST
   launchctl unload "$AGENTS_DIR/$label.plist" 2>/dev/null || true
   launchctl load "$AGENTS_DIR/$label.plist"
-  echo "已加载 $label -> $AGENTS_DIR/$label.plist"
+  echo "已加载 $label -> $AGENTS_DIR/$label.plist（每 ${interval}s 轮询）"
 }
 
-# 周一先跑（08:00）记录活动，每日任务稍后（08:10）基于已读记录做增量
-write_plist "$WEEKLY_LABEL" weekly 8 0 1
-write_plist "$DAILY_LABEL"  daily  8 10 ""
+write_plist "$DAILY_LABEL"  daily  900   # 每 15 分钟检查，当天第一次有网时发送一次
+write_plist "$WEEKLY_LABEL" weekly 1800  # 每 30 分钟检查，当周第一次有网时发送一次
 
 echo
 echo "完成。建议首次安装后执行一次 seed，避免第一天把历史活动一次性推出："
