@@ -29,9 +29,9 @@ const STATE_PATH = join(HERE, "state.json"); // 记录每个任务最近一次�
 const SEEN_TTL_DAYS = 60; // 已读记录保留天数，过期清理，避免文件无限增长
 
 const PROFILES = {
-  // 每日：只提醒「新出现」的近期活动，空结果不打扰；每天最多发一次
-  daily: { label: "未来 3 天新增", windowDays: 3, respectSeen: true, sendWhenEmpty: false, cadence: "daily" },
-  // 每周：本周概览，无论是否推送过都完整列出；每周最多发一次
+  // 每日：当天（今天）的完整清单，每天都发（不去重）；没有活动也发一条「今日暂无」。每天最多一次
+  daily: { label: "今日", windowDays: 0, respectSeen: false, sendWhenEmpty: true, cadence: "daily" },
+  // 每周：本周概览（未来 7 天），无论是否推送过都完整列出；每周最多发一次
   weekly: { label: "未来 7 天", windowDays: 7, respectSeen: false, sendWhenEmpty: true, cadence: "weekly" }
 };
 
