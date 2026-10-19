@@ -10,8 +10,8 @@ const { version } = JSON.parse(readFileSync("package.json", "utf8")) as { versio
 const skills = readdirSync(SKILLS_DIR, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
 
 function frontmatter(markdown: string): Record<string, string> {
-  const block = /^---\n([\s\S]*?)\n---\n/.exec(markdown)?.[1] ?? "";
-  return Object.fromEntries(block.split("\n").map((line) => /^(\w+):\s*(.*)$/.exec(line)).filter(Boolean)
+  const block = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(markdown)?.[1] ?? "";
+  return Object.fromEntries(block.split(/\r?\n/).map((line) => /^(\w+):\s*(.*)$/.exec(line)).filter(Boolean)
     .map((match) => [match![1]!, match![2]!.replace(/^"|"$/g, "")]));
 }
 

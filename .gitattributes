@@ -1,0 +1,4 @@
+# Keep LF everywhere so skills, scripts and tests behave the same on Windows checkouts.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
