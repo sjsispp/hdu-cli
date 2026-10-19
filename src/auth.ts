@@ -1,48 +1,32 @@
-import { execFile } from "node:child_process";
 import { access } from "node:fs/promises";
-import { userInfo } from "node:os";
-import { promisify } from "node:util";
+import { join } from "node:path";
 import { chromium } from "playwright-core";
+import { secretStore } from "./secret-store.js";
 import { loginWithDingTalkQr } from "./sso.js";
 
-const execFileAsync = promisify(execFile);
-const KEYCHAIN_SERVICE = "hdu-cli.job-session";
-const KEYCHAIN_ACCOUNT = userInfo().username;
+const SESSION_NAME = "hdu-cli.job-session";
 const LOGIN_URL = "https://job.hdu.edu.cn/default/hdu";
-
-async function keychain(args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync("/usr/bin/security", args, { encoding: "utf8" });
-  return stdout.trim();
-}
 
 export async function getJobSessionCookie(): Promise<string | undefined> {
   if (process.env.HDU_JOB_COOKIE?.trim()) return process.env.HDU_JOB_COOKIE.trim();
-  if (process.platform !== "darwin") return undefined;
-  try {
-    return await keychain(["find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT, "-w"]);
-  } catch {
-    return undefined;
-  }
+  return secretStore()?.get(SESSION_NAME);
 }
 
 async function saveJobSessionCookie(cookie: string): Promise<void> {
-  if (process.platform !== "darwin") {
-    throw new Error("Automatic secure session storage currently requires macOS Keychain. Use HDU_JOB_COOKIE on other systems.");
+  const store = secretStore();
+  if (!store) {
+    throw new Error("Secure session storage is supported on macOS and Windows. Use HDU_JOB_COOKIE on other systems.");
   }
-  await keychain([
-    "add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT,
-    "-l", "HDU CLI employment session", "-w", cookie
-  ]);
+  await store.set(SESSION_NAME, cookie, "HDU CLI employment session");
 }
 
 export async function clearJobSession(): Promise<boolean> {
-  if (process.platform !== "darwin") return false;
-  try {
-    await keychain(["delete-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT]);
-    return true;
-  } catch {
-    return false;
-  }
+  return (await secretStore()?.delete(SESSION_NAME)) ?? false;
+}
+
+/** Where the employment session is kept on this platform, for user-facing messages. */
+export function sessionStorageLabel(): string {
+  return secretStore()?.label ?? "HDU_JOB_COOKIE 环境变量";
 }
 
 export async function validateJobSession(providedCookie?: string): Promise<boolean> {
@@ -60,11 +44,18 @@ export async function validateJobSession(providedCookie?: string): Promise<boole
 }
 
 async function findBrowser(): Promise<string> {
-  const candidates = [
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-    "/Applications/Chromium.app/Contents/MacOS/Chromium"
-  ];
+  const programFiles = [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA]
+    .filter((directory): directory is string => Boolean(directory));
+  const candidates = process.platform === "win32"
+    ? programFiles.flatMap((directory) => [
+      join(directory, "Google", "Chrome", "Application", "chrome.exe"),
+      join(directory, "Microsoft", "Edge", "Application", "msedge.exe")
+    ])
+    : [
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+      "/Applications/Chromium.app/Contents/MacOS/Chromium"
+    ];
   for (const candidate of candidates) {
     try {
       await access(candidate);
@@ -118,6 +109,6 @@ export async function jobAuthStatus(): Promise<{ authenticated: boolean; storage
   const cookie = await getJobSessionCookie();
   return {
     authenticated: await validateJobSession(cookie),
-    storage: process.env.HDU_JOB_COOKIE?.trim() ? "environment" : cookie ? "macOS Keychain" : "none"
+    storage: process.env.HDU_JOB_COOKIE?.trim() ? "environment" : cookie ? secretStore()!.label : "none"
   };
 }

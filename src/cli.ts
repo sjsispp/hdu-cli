@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import QRCode from "qrcode";
-import { clearJobSession, jobAuthStatus, loginToJobSite, loginToJobSiteWithQr } from "./auth.js";
+import { clearJobSession, jobAuthStatus, loginToJobSite, loginToJobSiteWithQr, sessionStorageLabel } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
@@ -79,7 +79,7 @@ job.command("get").description("读取就业网详情")
   });
 
 const auth = program.command("auth").description("杭电统一身份认证会话");
-auth.command("login").description("登录杭电统一身份认证并将就业网会话保存到系统钥匙串")
+auth.command("login").description("登录杭电统一身份认证并将就业网会话加密保存到本机")
   .option("-m, --method <method>", "qr（钉钉扫码，在终端显示二维码）或 browser（打开浏览器）", "qr")
   .option("--timeout <seconds>", "等待登录的秒数", positiveInteger, 300)
   .action(async (options) => {
@@ -94,7 +94,7 @@ auth.command("login").description("登录杭电统一身份认证并将就业网
     } else {
       throw new Error(`Unknown login method: ${options.method}. Use qr or browser.`);
     }
-    console.log("登录成功，就业网会话已保存到 macOS 钥匙串。");
+    console.log(`登录成功，就业网会话已保存到${sessionStorageLabel()}。`);
   });
 auth.command("status").description("检查就业网登录状态")
   .option("--json", "输出 JSON")
@@ -103,7 +103,7 @@ auth.command("status").description("检查就业网登录状态")
     options.json ? printJson(status) : console.log(status.authenticated ? `已登录（${status.storage}）` : "未登录或会话已过期");
   });
 auth.command("logout").description("删除本机保存的就业网会话").action(async () => {
-  console.log((await clearJobSession()) ? "已从 macOS 钥匙串删除就业网会话。" : "没有找到已保存的就业网会话。");
+  console.log((await clearJobSession()) ? `已从${sessionStorageLabel()}删除就业网会话。` : "没有找到已保存的就业网会话。");
 });
 
 const service = program.command("service").description("主站服务信息");
