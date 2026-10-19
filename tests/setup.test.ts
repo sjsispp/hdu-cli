@@ -26,3 +26,12 @@ describe("setup helpers", () => {
     expect(await findOnPath("hdu", empty, "darwin")).toBeUndefined();
   });
 });
+
+describe("QR image viewer", () => {
+  it("opens images with each platform's default viewer", async () => {
+    const { viewerCommand } = await import("../src/setup.js");
+    expect(viewerCommand("/tmp/qr.png", "darwin")).toEqual(["open", ["/tmp/qr.png"]]);
+    expect(viewerCommand("C:\\qr.png", "win32")).toEqual(["cmd", ["/c", "start", "\"\"", "C:\\qr.png"]]);
+    expect(viewerCommand("/tmp/qr.png", "linux")).toEqual(["xdg-open", ["/tmp/qr.png"]]);
+  });
+});
