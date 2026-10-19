@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import QRCode from "qrcode";
-import { authStatus, loginWithBrowser, loginWithQr, logout, SERVICES, sessionStorageLabel } from "./auth.js";
+import { authStatus, logout, SERVICES, sessionStorageLabel } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
@@ -12,6 +11,7 @@ import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
 import { currentTerm, getExams, getGrades, getProfile, getTimetable, makeTerm } from "./sources/jw.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "./sources/service-info.js";
+import { type LoginMethod, performLogin, runSetup } from "./setup.js";
 import type {
   ArticleDeadlines, BusCampus, ClassCampus, JobPositionType, JobSiteSection, JwTerm, JwTermNumber, MainSiteSection,
   PhoneCategory
@@ -82,21 +82,23 @@ job.command("get").description("读取就业网详情")
   });
 
 const auth = program.command("auth").description("杭电统一身份认证会话");
-auth.command("login").description("登录杭电统一身份认证，会话加密保存在本机并自动续期")
-  .option("-m, --method <method>", "qr（钉钉扫码，在终端显示二维码）或 browser（打开浏览器）", "qr")
+function loginMethod(value: string): LoginMethod {
+  if (value !== "qr" && value !== "browser") throw new Error(`Unknown login method: ${value}. Use qr or browser.`);
+  return value;
+}
+
+program.command("setup").description("首次使用引导：检查环境并登录杭电统一身份认证")
+  .option("-m, --method <method>", "跳过选择，直接使用 qr 或 browser 登录", loginMethod)
   .option("--timeout <seconds>", "等待登录的秒数", positiveInteger, 300)
   .action(async (options) => {
-    if (options.method === "browser") {
-      console.log("请在打开的浏览器中完成杭电统一身份认证；CLI 不会读取或保存你的密码。");
-      await loginWithBrowser(options.timeout * 1000);
-    } else if (options.method === "qr") {
-      await loginWithQr(async (content) => {
-        console.log(await QRCode.toString(content, { type: "utf8", errorCorrectionLevel: "L" }));
-        console.log("请使用钉钉扫描上方二维码并在手机上确认登录；二维码过期后会自动刷新。");
-      }, options.timeout * 1000);
-    } else {
-      throw new Error(`Unknown login method: ${options.method}. Use qr or browser.`);
-    }
+    await runSetup({ method: options.method, timeoutMs: options.timeout * 1000 });
+  });
+
+auth.command("login").description("登录杭电统一身份认证，会话加密保存在本机并自动续期")
+  .option("-m, --method <method>", "qr（钉钉扫码，在终端显示二维码）或 browser（打开浏览器）", loginMethod, "qr")
+  .option("--timeout <seconds>", "等待登录的秒数", positiveInteger, 300)
+  .action(async (options) => {
+    await performLogin(options.method, options.timeout * 1000);
     console.log(`登录成功，统一身份认证会话已保存到${sessionStorageLabel()}；各网站会话过期后会自动续期。`);
   });
 auth.command("status").description("检查统一身份认证和各网站的登录状态")
