@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { getArticle, listSection } from "../src/sources/main-site.js";
 import { getJobSiteArticle, listJobSite } from "../src/sources/job-site.js";
 import { CookieJar, csrfHeaders, decodeQrPng, parseLoginExecution, ssoRequest } from "../src/sso.js";
+import { SERVICES, getServiceSession } from "../src/auth.js";
+import { getExams, getGrades, getProfile, getTimetable } from "../src/sources/jw.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "../src/sources/service-info.js";
 
 const live = process.env.HDU_LIVE_TEST === "1";
@@ -70,4 +72,21 @@ describe.runIf(live)("HDU SSO DingTalk QR login", () => {
     const qr = await ssoRequest(jar, `https://sso.hdu.edu.cn/api/public/qrlogin/qrgen/${id.data}/dingDingQr`);
     expect(decodeQrPng(qr.body)).toContain(`/api/public/redirect/${id.data}/dingDingQr`);
   });
+});
+
+// Needs a saved login (hdu auth login); asserts on shape only so no personal data ends up in test output.
+describe.runIf(live && process.env.HDU_LIVE_AUTH === "1")("HDU academic system live integration", () => {
+  it("opens an academic session from the saved SSO login", async () => {
+    expect(SERVICES.jw.host).toBe("newjw.hdu.edu.cn");
+    expect(await getServiceSession("jw")).toBeTruthy();
+  });
+
+  it("reads profile, timetable, grades and exams", async () => {
+    const [profile, timetable, grades, exams] = await Promise.all([getProfile(), getTimetable(), getGrades(), getExams()]);
+    expect(Object.keys(profile.fields)).toContain("学号");
+    expect(Object.keys(profile.fields)).not.toContain("证件号码");
+    expect(Array.isArray(timetable.courses)).toBe(true);
+    expect(grades.items.every((grade) => grade.courseName && grade.term)).toBe(true);
+    expect(Array.isArray(exams.items)).toBe(true);
+  }, 60_000);
 });
