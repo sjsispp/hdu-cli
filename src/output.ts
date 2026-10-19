@@ -1,6 +1,6 @@
 import type {
   Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
-  JwCourse, JwDay, JwExams, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
+  JwCourse, JwDay, JwExams, JwProgress, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
 import type { HduError } from "./errors.js";
 
@@ -174,4 +174,25 @@ export function printJwDay(day: JwDay): void {
   console.log(`${day.date} ${WEEKDAYS[day.weekday]} · ${day.term.label} 学期${week}`);
   if (day.courses.length === 0) return console.log("没有课程。");
   printCourseLines(day.courses, false);
+}
+
+const PROGRESS_STATUS = { in_progress: "在修", not_taken: "未修", other: "未通过或其他" } as const;
+
+export function printJwProgress(progress: JwProgress): void {
+  if (progress.gpa !== undefined) console.log(`平均学分绩点（官方）：${progress.gpa}`);
+  const counts = progress.courseCounts;
+  if (counts) {
+    console.log(`培养计划 ${counts.planned} 门：通过 ${counts.passed}，未通过 ${counts.failed}，在修 ${counts.inProgress}，未修 ${counts.notTaken}`);
+  }
+  if (progress.outstanding.length === 0) return console.log("\n各类别学分要求均已满足。");
+  const missing = progress.outstanding.reduce((sum, category) => sum + category.missingCredits, 0);
+  console.log(`\n尚未满足的类别（共差 ${Math.round(missing * 100) / 100} 学分）：`);
+  for (const category of progress.outstanding) {
+    console.log(`\n${category.path.join(" / ")}：要求 ${category.requiredCredits}，已获 ${category.earnedCredits}，差 ${category.missingCredits}`);
+    for (const course of category.courses) {
+      const details = [course.credit && `${course.credit} 学分`, PROGRESS_STATUS[course.status], course.plannedTerm && `建议 ${course.plannedTerm}`]
+        .filter(Boolean).join(" · ");
+      console.log(`  - ${course.name}（${details}）`);
+    }
+  }
 }
