@@ -184,7 +184,7 @@ hdu --version
 
 ## 发布
 
-1. 修改 `package.json` 中的 `version`，提交后推送到 `main`。
+1. 运行 `npm version <新版本> --no-git-tag-version`，它会同步更新所有技能的 `version`；提交后推送到 `main`。
 2. 打上同名标签并推送，例如 `git tag v0.4.0 && git push origin v0.4.0`。
 3. GitHub Actions 会在 Ubuntu、macOS 和 Windows 上运行类型检查与测试，然后创建 Release 并附上 `hdu-cli.tgz`，安装脚本会自动使用最新版本。
 
