@@ -4,6 +4,11 @@ import { getJobSiteArticle, listJobSite } from "../src/sources/job-site.js";
 import { CookieJar, csrfHeaders, decodeQrPng, parseLoginExecution, ssoRequest } from "../src/sso.js";
 import { SERVICES, getServiceSession } from "../src/auth.js";
 import { getExams, getGrades, getProfile, getTimetable } from "../src/sources/jw.js";
+import { getSelections, searchCourseOfferings } from "../src/sources/jw-courses.js";
+import { getProgress } from "../src/sources/jw-progress.js";
+import { getEmptyRooms } from "../src/sources/jw-rooms.js";
+import { getThesis } from "../src/sources/jw-thesis.js";
+import { getTeachingWeeks, getWeekTimetable } from "../src/sources/jw-week.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "../src/sources/service-info.js";
 
 const live = process.env.HDU_LIVE_TEST === "1";
@@ -89,5 +94,28 @@ describe.runIf(live && process.env.HDU_LIVE_AUTH === "1")("HDU academic system l
     expect(Array.isArray(timetable.courses)).toBe(true);
     expect(grades.items.every((grade) => grade.courseName && grade.term)).toBe(true);
     expect(Array.isArray(exams.items)).toBe(true);
+    expect(Array.isArray(exams.unscheduled)).toBe(true);
   }, 60_000);
+
+  it("reads teaching weeks, a week timetable and empty rooms", async () => {
+    const term = (await getTimetable()).term;
+    const weeks = await getTeachingWeeks(term);
+    expect(weeks.length).toBeGreaterThan(10);
+    expect(weeks[0]?.start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const week = await getWeekTimetable({ term, week: 1 });
+    expect(week.week.week).toBe(1);
+    const rooms = await getEmptyRooms({ campus: "xiasha", periods: [1, 2], week: 1, weekday: 1, term });
+    expect(rooms.rooms.length).toBeGreaterThan(0);
+  }, 90_000);
+
+  it("reads progress, course offerings, selections and thesis", async () => {
+    const [progress, offerings, selections, thesis] = await Promise.all([
+      getProgress(), searchCourseOfferings({ query: "高等数学", limit: 3 }), getSelections(), getThesis()
+    ]);
+    expect(progress.categories.length).toBeGreaterThan(0);
+    expect(progress.outstanding.every((category) => category.missingCredits >= 0)).toBe(true);
+    expect(offerings.items.length).toBeGreaterThan(0);
+    expect(JSON.stringify(selections)).not.toMatch(/zjhm|sjhm/);
+    expect(Array.isArray(thesis.topics)).toBe(true);
+  }, 90_000);
 });
