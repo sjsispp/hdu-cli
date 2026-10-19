@@ -35,6 +35,21 @@ export const SERVICES = {
       });
       return response.status === 200;
     }
+  },
+  jw: {
+    name: "教务系统",
+    host: "newjw.hdu.edu.cn",
+    service: "http://newjw.hdu.edu.cn/sso/driot4login",
+    sessionName: "hdu-cli.jw-session",
+    envVariable: "HDU_JW_COOKIE",
+    async isSessionValid(cookie) {
+      // An expired session redirects to the login page instead of rendering the student menu.
+      const response = await fetch("https://newjw.hdu.edu.cn/jwglxt/xtgl/index_initMenu.html?jsdm=xs", {
+        headers: { cookie, "user-agent": "hdu-cli/0.1" }, redirect: "manual",
+        signal: AbortSignal.timeout(15_000)
+      });
+      return response.status === 200;
+    }
   }
 } satisfies Record<string, ServiceDefinition>;
 
