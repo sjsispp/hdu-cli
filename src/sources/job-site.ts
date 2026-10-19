@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { inflateSync } from "node:zlib";
+import { HduError, invalidArgument, parseFailure } from "../errors.js";
 import { fetchText, isAllowedHduUrl } from "../http.js";
 import { getJobSessionCookie } from "../auth.js";
 import type {
@@ -129,7 +130,7 @@ export async function listJobSite(
   options: { page?: number; limit?: number; query?: string; type?: JobPositionType } = {}
 ): Promise<JobSiteListResult> {
   const page = options.page ?? 1;
-  if (!Number.isInteger(page) || page < 1) throw new Error("Page must be a positive integer.");
+  if (!Number.isInteger(page) || page < 1) throw invalidArgument("Page must be a positive integer.");
   const cookie = await getJobSessionCookie();
   const html = await fetchText(listUrl(section, { page, query: options.query, type: options.type }), { cookie });
   const result = parseJobSiteList(html, section, page, Boolean(cookie));
@@ -144,7 +145,7 @@ export function parseJobSiteArticle(html: string, url: string, authenticated = f
   const title = cleanText(
     root.find(".details-title h5, .title-message .title, .titleBox .text-t").first().text() || $("title").first().text()
   );
-  if (!title) throw new Error(`Could not find an employment article title at ${url}`);
+  if (!title) throw parseFailure(`Could not find an employment article title at ${url}`);
 
   const metadata: Record<string, string> = {};
   root.find(".details-list li, .titleBox .text-b p, .unit-info .item").each((_, element) => {
@@ -171,7 +172,7 @@ export function parseJobSiteArticle(html: string, url: string, authenticated = f
 
 export async function getJobSiteArticle(url: string): Promise<JobSiteArticle> {
   const parsed = new URL(url);
-  if (parsed.hostname !== "job.hdu.edu.cn") throw new Error("Only job.hdu.edu.cn URLs are supported here.");
+  if (parsed.hostname !== "job.hdu.edu.cn") throw new HduError("unsupported", "Only job.hdu.edu.cn URLs are supported here.");
   const cookie = await getJobSessionCookie();
   return parseJobSiteArticle(await fetchText(url, { cookie }), url, Boolean(cookie));
 }

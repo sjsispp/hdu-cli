@@ -1,6 +1,7 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
+import { HduError } from "./errors.js";
 import { secretStore } from "./secret-store.js";
 import {
   CookieJar, exchangeSsoSession, loginWithDingTalkQr, SSO_HOST, ssoSessionIsActive, type StoredCookie
@@ -58,7 +59,7 @@ export type ServiceId = keyof typeof SERVICES;
 function requireStore() {
   const store = secretStore();
   if (!store) {
-    throw new Error("Secure session storage is supported on macOS and Windows. Use HDU_*_COOKIE variables on other systems.");
+    throw new HduError("unsupported", "Secure session storage is supported on macOS and Windows.", "其他系统可通过 HDU_JOB_COOKIE、HDU_JW_COOKIE 环境变量提供会话。");
   }
   return store;
 }
@@ -79,7 +80,7 @@ async function loadSsoCookies(): Promise<StoredCookie[]> {
 }
 
 async function saveSsoCookies(cookies: StoredCookie[]): Promise<void> {
-  if (cookies.length === 0) throw new Error("The HDU SSO did not issue a login session.");
+  if (cookies.length === 0) throw new HduError("upstream", "The HDU SSO did not issue a login session.", "请重新运行 hdu auth login。");
   await requireStore().set(SSO_SESSION_NAME, JSON.stringify(cookies), "HDU CLI SSO session");
 }
 
@@ -131,7 +132,7 @@ async function completeLogin(ssoCookies: StoredCookie[]): Promise<void> {
   await saveSsoCookies(ssoCookies);
   sessionCache.clear();
   for (const id of Object.keys(SERVICES) as ServiceId[]) {
-    if (!(await refreshServiceSession(id))) throw new Error(`Could not open a ${SERVICES[id].name} session after logging in.`);
+    if (!(await refreshServiceSession(id))) throw new HduError("upstream", `Could not open a ${SERVICES[id].name} session after logging in.`, "请稍后重新运行 hdu auth login。");
   }
 }
 
@@ -156,7 +157,7 @@ async function findBrowser(): Promise<string> {
       // Try the next locally installed browser.
     }
   }
-  throw new Error("No supported browser found. Install Google Chrome, Microsoft Edge, or Chromium.");
+  throw new HduError("unsupported", "No supported browser found.", "请安装 Chrome、Edge 或 Chromium，或改用 hdu auth login --method qr 扫码登录。");
 }
 
 export async function loginWithBrowser(timeoutMs = 5 * 60_000): Promise<void> {

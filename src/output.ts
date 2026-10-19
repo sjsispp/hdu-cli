@@ -2,9 +2,17 @@ import type {
   Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
   JwExams, JwGrades, JwProfile, JwTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
+import type { HduError } from "./errors.js";
 
-export function printJson(value: unknown): void {
-  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+/** Success envelope for --json: `{"ok": true, "data": ...}` on stdout. */
+export function printJson(data: unknown): void {
+  process.stdout.write(`${JSON.stringify({ ok: true, data }, null, 2)}\n`);
+}
+
+/** Failure envelope for --json: `{"ok": false, "error": {...}}` on stderr. */
+export function printJsonError(error: HduError): void {
+  const body = { type: error.type, message: error.message, ...(error.hint ? { hint: error.hint } : {}) };
+  process.stderr.write(`${JSON.stringify({ ok: false, error: body }, null, 2)}\n`);
 }
 
 function printItems(items: ListItem[]): void {

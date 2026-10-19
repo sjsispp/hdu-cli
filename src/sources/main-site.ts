@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { createHash } from "node:crypto";
+import { HduError, invalidArgument, parseFailure } from "../errors.js";
 import { delay, fetchText, isAllowedHduUrl } from "../http.js";
 import type { Article, ListItem, ListResult, MainSiteSection } from "../types.js";
 
@@ -85,7 +86,7 @@ export async function listSection(
   options: { page?: number; limit?: number } = {}
 ): Promise<ListResult> {
   const page = options.page ?? 1;
-  if (!Number.isInteger(page) || page < 1) throw new Error("Page must be a positive integer.");
+  if (!Number.isInteger(page) || page < 1) throw invalidArgument("Page must be a positive integer.");
 
   const combined: ListResult = { source: "hdu-main", section, page, items: [] };
   for (const path of SECTION_PATHS[section]) {
@@ -106,11 +107,11 @@ export async function searchMainSite(
   options: { pages?: number; limit?: number } = {}
 ): Promise<ListItem[]> {
   const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
-  if (!normalizedQuery) throw new Error("Search query cannot be empty.");
+  if (!normalizedQuery) throw invalidArgument("Search query cannot be empty.");
 
   const pages = options.pages ?? 2;
   if (!Number.isInteger(pages) || pages < 1 || pages > 10) {
-    throw new Error("Pages must be an integer between 1 and 10.");
+    throw invalidArgument("Pages must be an integer between 1 and 10.");
   }
 
   const matches: ListItem[] = [];
@@ -137,13 +138,13 @@ export function parseArticlePage(html: string, url: string): Article {
   $("script, style, noscript, iframe").remove();
 
   const title = cleanText($(".arti_title").first().text() || $("title").first().text());
-  if (!title) throw new Error(`Could not find an article title at ${url}`);
+  if (!title) throw parseFailure(`Could not find an article title at ${url}`);
 
   const info = cleanText($(".arti_info, .arti_metas").first().text());
   const publishedAt = info.match(/发布时间[：:]\s*(20\d{2}-\d{1,2}-\d{1,2})/)?.[1];
   const publisher = info.match(/文章来源[：:]\s*([^|]+?)(?:\s|$)/)?.[1]?.trim();
   const $content = $(".wp_articlecontent").first();
-  if (!$content.length) throw new Error(`Could not find article content at ${url}`);
+  if (!$content.length) throw parseFailure(`Could not find article content at ${url}`);
 
   const blocks = $content
     .find("p, li, table tr")
@@ -179,6 +180,6 @@ export function parseArticlePage(html: string, url: string): Article {
 }
 
 export async function getArticle(url: string): Promise<Article> {
-  if (!isAllowedHduUrl(url)) throw new Error("Only *.hdu.edu.cn URLs are supported.");
+  if (!isAllowedHduUrl(url)) throw new HduError("unsupported", "Only *.hdu.edu.cn URLs are supported.");
   return parseArticlePage(await fetchText(url), url);
 }

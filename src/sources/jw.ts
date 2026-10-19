@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { getServiceSession } from "../auth.js";
+import { authRequired, HduError, parseFailure } from "../errors.js";
 import { isAllowedHduUrl } from "../http.js";
 import type {
   JwCourse, JwExam, JwExams, JwGrade, JwGrades, JwProfile, JwTerm, JwTermNumber, JwTimetable
@@ -22,11 +23,6 @@ const PROFILE_FIELDS = [
 
 type Row = Record<string, unknown>;
 
-export class JwSessionError extends Error {
-  constructor() {
-    super("教务系统未登录或会话已过期，请运行 hdu auth login。");
-  }
-}
 
 export function makeTerm(year: number, term: JwTermNumber): JwTerm {
   return { year, term, label: `${year}-${year + 1}-${term}` };
@@ -60,7 +56,7 @@ export function parseProfile(html: string): JwProfile {
     const value = text($(group).find(".form-control-static").first().text());
     if (PROFILE_FIELDS.includes(label) && value && !(label in fields)) fields[label] = value;
   });
-  if (Object.keys(fields).length === 0) throw new Error("Could not read the academic profile page.");
+  if (Object.keys(fields).length === 0) throw parseFailure("Could not read the academic profile page.");
   return { source: "hdu-jw", fields };
 }
 
@@ -117,9 +113,9 @@ export function parseExams(data: unknown, term: JwTerm): JwExams {
 
 async function jwRequest(path: string, form?: Record<string, string>): Promise<Response> {
   const url = `${BASE_URL}${path}`;
-  if (!isAllowedHduUrl(url)) throw new Error(`Refusing to fetch a non-HDU URL: ${url}`);
+  if (!isAllowedHduUrl(url)) throw new HduError("unsupported", `Refusing to fetch a non-HDU URL: ${url}`);
   const cookie = await getServiceSession("jw");
-  if (!cookie) throw new JwSessionError();
+  if (!cookie) throw authRequired("教务系统");
   const response = await fetch(url, {
     method: form ? "POST" : "GET",
     headers: {
@@ -133,15 +129,15 @@ async function jwRequest(path: string, form?: Record<string, string>): Promise<R
     signal: AbortSignal.timeout(20_000)
   });
   // ZFSoft answers AJAX requests from a logged-out session with the non-standard status 901.
-  if ((response.status >= 300 && response.status < 400) || response.status === 901) throw new JwSessionError();
-  if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+  if ((response.status >= 300 && response.status < 400) || response.status === 901) throw authRequired("教务系统");
+  if (!response.ok) throw new HduError("upstream", `HTTP ${response.status} for ${url}`, "教务系统暂时不可用，请稍后重试。");
   return response;
 }
 
 /** Read-only query endpoints answer JSON; an HTML body means the session was rejected. */
 async function jwQuery(path: string, form: Record<string, string>): Promise<unknown> {
   const response = await jwRequest(path, form);
-  if (!response.headers.get("content-type")?.includes("json")) throw new JwSessionError();
+  if (!response.headers.get("content-type")?.includes("json")) throw authRequired("教务系统");
   return response.json();
 }
 

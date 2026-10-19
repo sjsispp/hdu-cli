@@ -1,3 +1,5 @@
+import { HduError } from "./errors.js";
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 const USER_AGENT = "hdu-cli/0.1 (+https://www.hdu.edu.cn/; public-information-reader)";
 
@@ -18,7 +20,7 @@ export async function fetchText(
   options: { timeoutMs?: number; retries?: number; cookie?: string } = {}
 ): Promise<string> {
   if (!isAllowedHduUrl(url)) {
-    throw new Error(`Refusing to fetch a non-HDU URL: ${url}`);
+    throw new HduError("unsupported", `Refusing to fetch a non-HDU URL: ${url}`, "hdu 只访问 *.hdu.edu.cn 下的地址。");
   }
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -42,8 +44,10 @@ export async function fetchText(
 
       if (!response.ok) {
         const retryable = response.status === 429 || response.status >= 500;
-        if (!retryable || attempt === retries) {
-          throw new Error(`HTTP ${response.status} for ${url}`);
+        if (!retryable) throw new HduError("upstream", `HTTP ${response.status} for ${url}`);
+        if (attempt === retries) {
+          lastError = new HduError("upstream", `HTTP ${response.status} for ${url}`, "学校网站暂时不可用，请稍后重试。");
+          break;
         }
         await delay(250 * (attempt + 1));
         continue;
@@ -51,6 +55,7 @@ export async function fetchText(
 
       return await response.text();
     } catch (error) {
+      if (error instanceof HduError) throw error;
       lastError = error;
       if (attempt === retries) break;
       await delay(250 * (attempt + 1));
@@ -59,8 +64,9 @@ export async function fetchText(
     }
   }
 
+  if (lastError instanceof HduError) throw lastError;
   const reason = lastError instanceof Error ? lastError.message : String(lastError);
-  throw new Error(`Failed to fetch ${url}: ${reason}`);
+  throw new HduError("network", `Failed to fetch ${url}: ${reason}`, "请检查网络连接后重试；校外网络访问部分系统可能需要学校 VPN。");
 }
 
 export function delay(ms: number): Promise<void> {

@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import * as cheerio from "cheerio";
 import jsQRModule from "jsqr";
 import { PNG } from "pngjs";
+import { HduError, parseFailure } from "./errors.js";
 import { delay, isAllowedHduUrl } from "./http.js";
 
 export const SSO_HOST = "sso.hdu.edu.cn";
@@ -83,14 +84,14 @@ export function csrfHeaders(key = randomBytes(24).toString("base64url").slice(0,
 
 export function parseLoginExecution(html: string): string {
   const execution = cheerio.load(html)("#login-page-flowkey").text().trim();
-  if (!execution) throw new Error("Could not read the HDU SSO login form.");
+  if (!execution) throw parseFailure("Could not read the HDU SSO login form.");
   return execution;
 }
 
 export function decodeQrPng(png: Buffer): string {
   const image = PNG.sync.read(png);
   const result = jsQR(new Uint8ClampedArray(image.data), image.width, image.height);
-  if (!result?.data) throw new Error("Could not decode the DingTalk login QR code.");
+  if (!result?.data) throw parseFailure("Could not decode the DingTalk login QR code.");
   return result.data;
 }
 
@@ -107,7 +108,7 @@ export async function ssoRequest(
   let body: URLSearchParams | undefined = init.body;
   const maxRedirects = init.maxRedirects ?? MAX_REDIRECTS;
   for (let hop = 0; ; hop += 1) {
-    if (!isAllowedHduUrl(current)) throw new Error(`Refusing to follow a non-HDU URL during login: ${current}`);
+    if (!isAllowedHduUrl(current)) throw new HduError("unsupported", `Refusing to follow a non-HDU URL during login: ${current}`);
     const cookie = jar.header(current);
     const response = await fetch(current, {
       method,
@@ -192,7 +193,7 @@ export async function loginWithDingTalkQr(options: QrLoginOptions): Promise<{ ja
     const loginPage = await ssoRequest(jar, loginUrl);
     const execution = parseLoginExecution(loginPage.body.toString("utf8"));
     const loginId = await ssoJson<string>(jar, "/api/protected/qrlogin/loginid");
-    if (loginId.code !== 200 || !loginId.data) throw new Error("The HDU SSO did not issue a QR login id.");
+    if (loginId.code !== 200 || !loginId.data) throw new HduError("upstream", "The HDU SSO did not issue a QR login id.", "统一身份认证暂时不可用，请稍后重试。");
 
     const qr = await ssoRequest(jar, `${SSO_ORIGIN}/api/public/qrlogin/qrgen/${encodeURIComponent(loginId.data)}/dingDingQr`);
     await options.onQrCode(decodeQrPng(qr.body));
@@ -222,9 +223,9 @@ export async function loginWithDingTalkQr(options: QrLoginOptions): Promise<{ ja
       })
     });
     if (new URL(result.url).hostname === "sso.hdu.edu.cn") {
-      throw new Error("DingTalk QR login was not accepted by the HDU SSO.");
+      throw new HduError("upstream", "DingTalk QR login was not accepted by the HDU SSO.", "请重新运行 hdu auth login 再扫码一次。");
     }
     return { jar, finalUrl: result.url };
   }
-  throw new Error("Timed out waiting for the DingTalk QR scan.");
+  throw new HduError("auth_required", "Timed out waiting for the DingTalk QR scan.", "请重新运行 hdu auth login，并在二维码有效期内扫码确认。");
 }

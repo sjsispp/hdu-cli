@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
-import { Command } from "commander";
+import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { authStatus, logout, SERVICES, sessionStorageLabel } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
+import { ERROR_EXIT_CODES, invalidArgument, toHduError } from "./errors.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
-  printJson, printJwExams, printJwGrades, printJwProfile, printJwTimetable, printList, printPhones, printSearch,
+  printJson, printJsonError, printJwExams, printJwGrades, printJwProfile, printJwTimetable, printList, printPhones, printSearch,
   printServiceLinks
 } from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
@@ -24,9 +25,15 @@ const { version } = createRequire(import.meta.url)("../package.json") as { versi
 const program = new Command();
 program.name("hdu").description("查询杭州电子科技大学公开信息").version(version);
 
+// In --json mode every failure, including usage errors, is reported as one JSON envelope on stderr.
+// Subcommands inherit these settings only if they are configured before the commands are added.
+const jsonMode = process.argv.includes("--json");
+program.exitOverride();
+program.configureOutput({ outputError: (message, write) => { if (!jsonMode) write(message); } });
+
 function positiveInteger(value: string): number {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) throw new Error(`Expected a positive integer, got: ${value}`);
+  if (!Number.isInteger(parsed) || parsed < 1) throw new InvalidArgumentError(`Expected a positive integer, got: ${value}`);
   return parsed;
 }
 
@@ -72,7 +79,7 @@ job.command("positions").description("全职与实习岗位")
   .option("-t, --type <type>", "all、fulltime 或 intern", "all")
   .option("--json", "输出 JSON")
   .action(async (options) => {
-    if (!["all", "fulltime", "intern"].includes(options.type)) throw new Error("Position type must be all, fulltime, or intern.");
+    if (!["all", "fulltime", "intern"].includes(options.type)) throw invalidArgument("Position type must be all, fulltime, or intern.");
     const result = await listJobSite("positions", { ...options, type: options.type as JobPositionType });
     options.json ? printJson(result) : printJobList(result);
   });
@@ -87,7 +94,7 @@ job.command("get").description("读取就业网详情")
 
 const auth = program.command("auth").description("杭电统一身份认证会话");
 function loginMethod(value: string): LoginMethod {
-  if (value !== "qr" && value !== "browser") throw new Error(`Unknown login method: ${value}. Use qr or browser.`);
+  if (value !== "qr" && value !== "browser") throw new InvalidArgumentError(`Unknown login method: ${value}. Use qr or browser.`);
   return value;
 }
 
@@ -122,7 +129,7 @@ auth.command("logout").description("删除本机保存的统一身份认证和�
 const jw = program.command("jw").description("杭电教务系统（需要登录，只读）");
 
 function termNumber(value: string): JwTermNumber {
-  if (value !== "1" && value !== "2" && value !== "3") throw new Error(`Expected term 1, 2 or 3, got: ${value}`);
+  if (value !== "1" && value !== "2" && value !== "3") throw new InvalidArgumentError(`Expected term 1, 2 or 3, got: ${value}`);
   return Number(value) as JwTermNumber;
 }
 
@@ -179,7 +186,7 @@ service.command("phones").description("查询学校办公电话")
   .option("--json", "输出 JSON")
   .action(async (options) => {
     const categories = ["all", "administration", "academic", "support", "affiliated", "research"];
-    if (!categories.includes(options.category)) throw new Error(`Phone category must be one of: ${categories.join(", ")}.`);
+    if (!categories.includes(options.category)) throw invalidArgument(`Phone category must be one of: ${categories.join(", ")}.`);
     const result = await listPhones({ category: options.category as PhoneCategory, query: options.query });
     options.json ? printJson(result) : printPhones(result.offices);
   });
@@ -188,7 +195,7 @@ service.command("buses").description("查询工作班车")
   .requiredOption("-c, --campus <campus>", "xiasha 或 shaoxing")
   .option("--json", "输出 JSON")
   .action(async (options) => {
-    if (!["xiasha", "shaoxing"].includes(options.campus)) throw new Error("Bus campus must be xiasha or shaoxing.");
+    if (!["xiasha", "shaoxing"].includes(options.campus)) throw invalidArgument("Bus campus must be xiasha or shaoxing.");
     const result = await getBusSchedule(options.campus as BusCampus);
     options.json ? printJson(result) : printBusSchedule(result);
   });
@@ -198,7 +205,7 @@ service.command("class-times").description("查询校区上课时间")
   .option("--json", "输出 JSON")
   .action(async (options) => {
     if (!["xiasha", "shaoxing", "qingshanhu"].includes(options.campus)) {
-      throw new Error("Class campus must be xiasha, shaoxing, or qingshanhu.");
+      throw invalidArgument("Class campus must be xiasha, shaoxing, or qingshanhu.");
     }
     const result = await getClassSchedule(options.campus as ClassCampus);
     options.json ? printJson(result) : printClassSchedule(result);
@@ -234,7 +241,7 @@ program
   .option("-l, --limit <number>", "最多检查文章数量", positiveInteger, 10)
   .option("--json", "输出 JSON")
   .action(async (options) => {
-    if (options.pages > 5) throw new Error("Deadline scanning is limited to 5 pages per run.");
+    if (options.pages > 5) throw invalidArgument("Deadline scanning is limited to 5 pages per run.");
     const candidates = [];
     for (let page = 1; page <= options.pages; page += 1) {
       candidates.push(...(await listSection("notices", { page })).items);
@@ -259,8 +266,15 @@ program
     options.json ? printJson({ source: "hdu-main", results }) : printDeadlines(results);
   });
 
-program.parseAsync().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`hdu: ${message}`);
-  process.exitCode = 1;
+program.parseAsync().catch((thrown: unknown) => {
+  // --help and --version also exit through CommanderError, with exit code 0.
+  if (thrown instanceof CommanderError && thrown.exitCode === 0) return;
+  const error = toHduError(thrown);
+  if (jsonMode) {
+    printJsonError(error);
+  } else if (!(thrown instanceof CommanderError)) {
+    console.error(`hdu: ${error.message}`);
+    if (error.hint) console.error(`提示：${error.hint}`);
+  }
+  process.exitCode = ERROR_EXIT_CODES[error.type];
 });

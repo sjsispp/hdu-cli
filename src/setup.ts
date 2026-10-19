@@ -3,6 +3,7 @@ import { delimiter, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import QRCode from "qrcode";
 import { authStatus, loginWithBrowser, loginWithQr, SERVICES, type ServiceId } from "./auth.js";
+import { HduError } from "./errors.js";
 import { secretStore } from "./secret-store.js";
 
 export type LoginMethod = "qr" | "browser";
@@ -54,7 +55,7 @@ function printServices(services: Record<ServiceId, boolean>): void {
 
 export async function runSetup(options: { method?: LoginMethod; timeoutMs: number }): Promise<void> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    throw new Error("hdu setup 需要在交互式终端中运行；非交互环境请使用 hdu auth login。");
+    throw new HduError("unsupported", "hdu setup 需要在交互式终端中运行。", "非交互环境请使用 hdu auth login。");
   }
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   let closed = false;
