@@ -25,9 +25,13 @@ npm run dev -- service class-times --campus qingshanhu --json
 
 ```bash
 npm run build
-npm link
-hdu notice list
+npm link      # 把 hdu 注册为全局命令，之后在任意目录可用
+hdu setup     # 首次使用引导：检查环境并登录
 ```
+
+`npm link` 链接的是本项目的 `dist/` 目录：修改代码后需要重新 `npm run build`。使用 nvm 时，每个 Node 版本的全局命令相互独立，切换版本后需要重新 `npm link`。
+
+`hdu setup` 会依次检查会话存储和 `hdu` 命令是否在 PATH 中，然后引导你选择钉钉扫码或浏览器登录统一身份认证，最后显示各网站的登录状态和常用命令。已登录时可以选择跳过。引导需要在交互式终端中运行；脚本或智能体请使用 `hdu auth login`。
 
 ### 杭电就业网
 
