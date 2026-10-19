@@ -137,6 +137,32 @@ hdu --version
 
 本项目同时提供了 `AGENTS.md`，当 Codex 在此仓库中工作时，会获知应优先使用 `hdu ... --json` 查询杭电公开信息。
 
+## JSON 输出约定
+
+加 `--json` 时，成功结果写到 stdout，退出码为 0：
+
+```json
+{ "ok": true, "data": { ... } }
+```
+
+失败时（包括参数错误）写到 stderr，退出码非 0：
+
+```json
+{ "ok": false, "error": { "type": "auth_required", "message": "教务系统未登录或会话已过期。", "hint": "请用户在自己的终端运行 hdu setup（首次）或 hdu auth login 完成扫码登录，然后重试。" } }
+```
+
+判断成败请看 `ok` 或退出码。`hint` 给出下一步该怎么做。
+
+| `error.type` | 退出码 | 含义 |
+| --- | --- | --- |
+| `internal` | 1 | 未预期的内部错误 |
+| `invalid_argument` | 2 | 参数或用法错误 |
+| `auth_required` | 3 | 需要登录或会话已过期 |
+| `network` | 4 | 网络不可达或超时 |
+| `upstream` | 5 | 学校网站返回错误或暂时不可用 |
+| `parse` | 6 | 页面结构变化，无法解析 |
+| `unsupported` | 7 | 当前环境或目标不受支持（如非杭电域名） |
+
 ## 发布
 
 1. 修改 `package.json` 中的 `version`，提交后推送到 `main`。

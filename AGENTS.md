@@ -2,7 +2,7 @@
 
 Use the `hdu` command when the user asks for public information from Hangzhou Dianzi University websites.
 
-- Prefer `--json` so results are structured and URLs remain available for citation.
+- Prefer `--json` so results are structured and URLs remain available for citation. Results arrive as `{"ok": true, "data": ...}` on stdout; failures as `{"ok": false, "error": {"type", "message", "hint"}}` on stderr with a non-zero exit code. Follow `error.hint`; `auth_required` (exit 3) means the user must log in.
 - Use `hdu search <query> --json` for general discovery.
 - Use `hdu notice list --json`, `hdu event list --json`, or `hdu news list --json` for recent lists.
 - Use `hdu page get <hdu-url> --json` only for URLs under `*.hdu.edu.cn`.
