@@ -23,11 +23,11 @@ Login is a DingTalk QR scan that only the user can complete on their phone. You 
 2. Read stdout line by line. The first line is
 
    ```json
-   {"ok": true, "event": "qr_code", "data": {"image": "/tmp/.../login-qr.png", "opened": true, "message": "…"}}
+   {"ok": true, "event": "qr_code", "data": {"image": "/tmp/.../login-qr.png", "opened": true, "expiresInSeconds": 120, "message": "…"}}
    ```
 
    `--open` has already popped the QR image up in the system image viewer. Tell the user: "A DingTalk login QR code has opened in a window — scan it with DingTalk and confirm on your phone." If your client can display local images, also show `data.image`; if the user cannot see the window, give them the path.
-3. If another `qr_code` line arrives, the code expired and was refreshed (the window reopens) — tell the user to scan the new one.
+3. Each code is replaced about every 2 minutes (`data.expiresInSeconds`): a new `qr_code` line arrives and the window reopens — tell the user to scan the newest one.
 4. The last line has no `event`: `{"ok": true, "data": {"sso": true, "services": {…}}}` means success — retry the user's original command. An error (exit 3, `Timed out waiting for the DingTalk QR scan`) means nobody scanned in time; ask whether to try again rather than looping.
 
 If you cannot run commands in the background, ask the user to run `hdu auth login` in their own terminal instead (it shows the QR code there) and to tell you when it is done.
