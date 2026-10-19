@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getArticle, listSection } from "../src/sources/main-site.js";
 import { getJobSiteArticle, listJobSite } from "../src/sources/job-site.js";
+import { CookieJar, csrfHeaders, decodeQrPng, parseLoginExecution, ssoRequest } from "../src/sso.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "../src/sources/service-info.js";
 
 const live = process.env.HDU_LIVE_TEST === "1";
@@ -54,5 +55,19 @@ describe.runIf(live)("HDU main site service information", () => {
     expect(buses.trips.length).toBeGreaterThan(0);
     expect(buses.trips[0]?.time).toMatch(/\d{1,2}:\d{2}/);
     expect(classes.periods.some((period) => period.name === "第一节")).toBe(true);
+  });
+});
+
+describe.runIf(live)("HDU SSO DingTalk QR login", () => {
+  it("issues a decodable QR code without completing a login", async () => {
+    const jar = new CookieJar();
+    const page = await ssoRequest(jar, "https://sso.hdu.edu.cn/login?service=https%3A%2F%2Fjob.hdu.edu.cn%2Fdefault%2Fhdu");
+    expect(parseLoginExecution(page.body.toString("utf8")).length).toBeGreaterThan(10);
+    const id = JSON.parse((await ssoRequest(jar, "https://sso.hdu.edu.cn/api/protected/qrlogin/loginid", {
+      headers: csrfHeaders()
+    })).body.toString("utf8")) as { code: number; data: string };
+    expect(id.code).toBe(200);
+    const qr = await ssoRequest(jar, `https://sso.hdu.edu.cn/api/public/qrlogin/qrgen/${id.data}/dingDingQr`);
+    expect(decodeQrPng(qr.body)).toContain(`/api/public/redirect/${id.data}/dingDingQr`);
   });
 });
