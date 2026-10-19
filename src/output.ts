@@ -1,6 +1,6 @@
 import type {
   Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
-  JwCourse, JwDay, JwExams, JwProgress, JwRooms, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
+  JwCourse, JwCourseOfferings, JwDay, JwExams, JwProgress, JwRooms, JwSelections, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
 import type { HduError } from "./errors.js";
 
@@ -201,5 +201,26 @@ export function printJwRooms(result: JwRooms): void {
   console.log(`${result.campus} · 第 ${result.week} 周 ${WEEKDAYS[result.weekday]} 第 ${result.periods.join(",")} 节空闲场地（${result.rooms.length} 间）`);
   for (const room of result.rooms) {
     console.log(`${room.name}${room.seats ? `  ${room.seats} 座` : ""}${room.type ? `  ${room.type}` : ""}`);
+  }
+}
+
+export function printJwCourseOfferings(result: JwCourseOfferings): void {
+  console.log(`${result.term.label} 学期开课（显示 ${result.items.length} 个教学班）`);
+  if (result.items.length === 0) return console.log("没有找到匹配的课程。");
+  for (const course of result.items) {
+    console.log(`${course.name}  ${course.className}`);
+    const details = [course.teachers.join(","), course.schedule, course.location, course.campus,
+      course.capacity ? `${course.enrolled}/${course.capacity} 人` : undefined].filter(Boolean).join(" · ");
+    if (details) console.log(`  ${details}`);
+  }
+}
+
+export function printJwSelections(result: JwSelections): void {
+  console.log(`${result.term.label} 学期已选课程`);
+  if (result.items.length === 0) return console.log("本学期没有选课记录。");
+  for (const course of result.items) {
+    const details = [course.credit && `${course.credit} 学分`, course.courseNature, course.teachers.join(","), course.weeks,
+      course.retake ? "重修" : undefined].filter(Boolean).join(" · ");
+    console.log(`${course.name}${details ? `  (${details})` : ""}`);
   }
 }

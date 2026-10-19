@@ -6,11 +6,12 @@ import { extractDeadlines } from "./deadlines.js";
 import { ERROR_EXIT_CODES, invalidArgument, toHduError } from "./errors.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
-  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwProgress, printJwRooms, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
+  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwCourseOfferings, printJwProgress, printJwRooms, printJwSelections, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
   printServiceLinks
 } from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
 import { currentTerm, getExams, getGrades, getProfile, getTimetable, makeTerm } from "./sources/jw.js";
+import { getSelections, searchCourseOfferings } from "./sources/jw-courses.js";
 import { getProgress } from "./sources/jw-progress.js";
 import { getEmptyRooms, parsePeriods } from "./sources/jw-rooms.js";
 import { getDay, getWeekTimetable } from "./sources/jw-week.js";
@@ -213,6 +214,25 @@ jw.command("rooms").description("查询空闲教室，默认本周、今天")
       date: options.date, building: options.building, minSeats: options.minSeats
     });
     options.json ? printJson(result) : printJwRooms(result);
+  });
+
+addTermOptions(jw.command("courses").description("全校开课查询：按课程、教师或地点查找教学班，默认当前学期"))
+  .option("-q, --query <text>", "课程代码或名称")
+  .option("--teacher <text>", "教师姓名或工号")
+  .option("--location <text>", "上课地点")
+  .option("-l, --limit <number>", "最多返回的教学班数量", positiveInteger, 30)
+  .action(async (options) => {
+    const result = await searchCourseOfferings({
+      query: options.query, teacher: options.teacher, location: options.location,
+      term: selectedTerm(options, () => undefined), limit: options.limit
+    });
+    options.json ? printJson(result) : printJwCourseOfferings(result);
+  });
+
+addTermOptions(jw.command("selections").description("本人选课结果，默认当前学期"))
+  .action(async (options) => {
+    const result = await getSelections(selectedTerm(options, currentTerm));
+    options.json ? printJson(result) : printJwSelections(result);
   });
 
 addTermOptions(jw.command("grades").description("课程成绩，默认全部学期"))
