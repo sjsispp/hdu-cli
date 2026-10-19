@@ -5,9 +5,10 @@ import { authStatus, logout, SERVICES, sessionStorageLabel } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
 import { ERROR_EXIT_CODES, invalidArgument, toHduError } from "./errors.js";
 import {
-  printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
-  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwCourseOfferings, printJwProgress, printJwRooms, printJwSelections, printJwThesis, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
-  printServiceLinks
+  printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList, printJson,
+  printJsonError, printJwCourseOfferings, printJwDay, printJwExams, printJwGrades, printJwProfile,
+  printJwProgress, printJwRooms, printJwSelections, printJwThesis, printJwTimetable, printJwWeek, printList,
+  printPhones, printSearch, printServiceLinks
 } from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
 import { currentTerm, getExams, getGrades, getProfile, getTimetable, makeTerm } from "./sources/jw.js";
