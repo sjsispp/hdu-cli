@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { clearJobSession, jobAuthStatus, loginToJobSite } from "./auth.js";
+import QRCode from "qrcode";
+import { clearJobSession, jobAuthStatus, loginToJobSite, loginToJobSiteWithQr } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
@@ -78,11 +79,21 @@ job.command("get").description("读取就业网详情")
   });
 
 const auth = program.command("auth").description("杭电统一身份认证会话");
-auth.command("login").description("在浏览器中登录并将就业网会话保存到系统钥匙串")
+auth.command("login").description("登录杭电统一身份认证并将就业网会话保存到系统钥匙串")
+  .option("-m, --method <method>", "qr（钉钉扫码，在终端显示二维码）或 browser（打开浏览器）", "qr")
   .option("--timeout <seconds>", "等待登录的秒数", positiveInteger, 300)
   .action(async (options) => {
-    console.log("请在打开的浏览器中完成杭电统一身份认证；CLI 不会读取或保存你的密码。");
-    await loginToJobSite(options.timeout * 1000);
+    if (options.method === "browser") {
+      console.log("请在打开的浏览器中完成杭电统一身份认证；CLI 不会读取或保存你的密码。");
+      await loginToJobSite(options.timeout * 1000);
+    } else if (options.method === "qr") {
+      await loginToJobSiteWithQr(async (content) => {
+        console.log(await QRCode.toString(content, { type: "utf8", errorCorrectionLevel: "L" }));
+        console.log("请使用钉钉扫描上方二维码并在手机上确认登录；二维码过期后会自动刷新。");
+      }, options.timeout * 1000);
+    } else {
+      throw new Error(`Unknown login method: ${options.method}. Use qr or browser.`);
+    }
     console.log("登录成功，就业网会话已保存到 macOS 钥匙串。");
   });
 auth.command("status").description("检查就业网登录状态")

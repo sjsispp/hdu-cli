@@ -3,6 +3,7 @@ import { access } from "node:fs/promises";
 import { userInfo } from "node:os";
 import { promisify } from "node:util";
 import { chromium } from "playwright-core";
+import { loginWithDingTalkQr } from "./sso.js";
 
 const execFileAsync = promisify(execFile);
 const KEYCHAIN_SERVICE = "hdu-cli.job-session";
@@ -101,6 +102,16 @@ export async function loginToJobSite(timeoutMs = 5 * 60_000): Promise<void> {
   } finally {
     await browser.close();
   }
+}
+
+export async function loginToJobSiteWithQr(
+  onQrCode: (content: string) => void | Promise<void>, timeoutMs = 5 * 60_000
+): Promise<void> {
+  const { jar } = await loginWithDingTalkQr({ service: LOGIN_URL, timeoutMs, onQrCode });
+  const cookies = jar.hostCookies("job.hdu.edu.cn");
+  if (!cookies) throw new Error("The employment site did not issue a session cookie.");
+  if (!(await validateJobSession(cookies))) throw new Error("The employment session could not be validated.");
+  await saveJobSessionCookie(cookies);
 }
 
 export async function jobAuthStatus(): Promise<{ authenticated: boolean; storage: string }> {
