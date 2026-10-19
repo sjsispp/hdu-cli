@@ -5,13 +5,16 @@ import { authStatus, loginWithBrowser, loginWithQr, logout, SERVICES, sessionSto
 import { extractDeadlines } from "./deadlines.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
-  printJson, printList, printPhones, printSearch, printServiceLinks
+  printJson, printJwExams, printJwGrades, printJwProfile, printJwTimetable, printList, printPhones, printSearch,
+  printServiceLinks
 } from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
+import { currentTerm, getExams, getGrades, getProfile, getTimetable, makeTerm } from "./sources/jw.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "./sources/service-info.js";
 import type {
-  ArticleDeadlines, BusCampus, ClassCampus, JobPositionType, JobSiteSection, MainSiteSection, PhoneCategory
+  ArticleDeadlines, BusCampus, ClassCampus, JobPositionType, JobSiteSection, JwTerm, JwTermNumber, MainSiteSection,
+  PhoneCategory
 } from "./types.js";
 
 const program = new Command();
@@ -109,6 +112,52 @@ auth.command("status").description("检查统一身份认证和各网站的登�
 auth.command("logout").description("删除本机保存的统一身份认证和各网站会话").action(async () => {
   console.log((await logout()) ? `已从${sessionStorageLabel()}删除登录会话。` : "没有找到已保存的登录会话。");
 });
+
+const jw = program.command("jw").description("杭电教务系统（需要登录，只读）");
+
+function termNumber(value: string): JwTermNumber {
+  if (value !== "1" && value !== "2" && value !== "3") throw new Error(`Expected term 1, 2 or 3, got: ${value}`);
+  return Number(value) as JwTermNumber;
+}
+
+/** Resolves --year/--term; when both are omitted, `fallback` decides (current term, or undefined for all terms). */
+function selectedTerm(options: { year?: number; term?: JwTermNumber }, fallback: () => JwTerm | undefined): JwTerm | undefined {
+  if (options.year === undefined && options.term === undefined) return fallback();
+  const current = currentTerm();
+  return makeTerm(options.year ?? current.year, options.term ?? current.term);
+}
+
+function addTermOptions(command: Command): Command {
+  return command
+    .option("-y, --year <year>", "学年起始年份，如 2026 表示 2026-2027 学年", positiveInteger)
+    .option("-t, --term <term>", "学期：1、2 或 3", termNumber)
+    .option("--json", "输出 JSON");
+}
+
+jw.command("profile").description("个人学籍信息（仅学业字段，不含证件号等敏感信息）")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const result = await getProfile();
+    options.json ? printJson(result) : printJwProfile(result);
+  });
+
+addTermOptions(jw.command("timetable").description("个人课表，默认当前学期"))
+  .action(async (options) => {
+    const result = await getTimetable(selectedTerm(options, currentTerm));
+    options.json ? printJson(result) : printJwTimetable(result);
+  });
+
+addTermOptions(jw.command("grades").description("课程成绩，默认全部学期"))
+  .action(async (options) => {
+    const result = await getGrades(selectedTerm(options, () => undefined));
+    options.json ? printJson(result) : printJwGrades(result);
+  });
+
+addTermOptions(jw.command("exams").description("考试安排，默认当前学期"))
+  .action(async (options) => {
+    const result = await getExams(selectedTerm(options, currentTerm));
+    options.json ? printJson(result) : printJwExams(result);
+  });
 
 const service = program.command("service").description("主站服务信息");
 service.command("links").description("列出图书馆、档案馆、校医院等服务入口")

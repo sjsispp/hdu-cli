@@ -1,6 +1,6 @@
 import type {
   Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
-  ListItem, ListResult, PhoneOffice, ServiceLink
+  JwExams, JwGrades, JwProfile, JwTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
 
 export function printJson(value: unknown): void {
@@ -99,4 +99,43 @@ export function printBusSchedule(schedule: BusSchedule): void {
 export function printClassSchedule(schedule: ClassSchedule): void {
   console.log(`${schedule.campus} 校区上课时间`);
   for (const period of schedule.periods) console.log(`${period.session} · ${period.name}: ${period.time}`);
+}
+
+export function printJwProfile(profile: JwProfile): void {
+  for (const [key, value] of Object.entries(profile.fields)) console.log(`${key}: ${value}`);
+}
+
+export function printJwTimetable(timetable: JwTimetable): void {
+  console.log(`${timetable.term.label} 学期课表`);
+  if (timetable.courses.length === 0 && timetable.unscheduled.length === 0) return console.log("本学期没有课程。");
+  for (const course of timetable.courses) {
+    console.log(`${course.weekdayName ?? "时间未定"} ${course.periods ?? ""}  ${course.name}`);
+    const details = [course.weeks, course.location, course.campus, course.teacher].filter(Boolean).join(" · ");
+    if (details) console.log(`  ${details}`);
+  }
+  if (timetable.unscheduled.length > 0) {
+    console.log("\n无固定上课时间：");
+    for (const course of timetable.unscheduled) {
+      console.log(`- ${course.name}${course.teacher ? ` · ${course.teacher}` : ""}${course.weeks ? ` · ${course.weeks}` : ""}`);
+    }
+  }
+}
+
+export function printJwGrades(grades: JwGrades): void {
+  if (grades.items.length === 0) return console.log("没有找到成绩。");
+  for (const grade of grades.items) {
+    const details = [grade.credit && `${grade.credit} 学分`, grade.gradePoint && `绩点 ${grade.gradePoint}`, grade.courseNature, grade.examNature]
+      .filter(Boolean).join(" · ");
+    console.log(`${grade.term}  ${grade.courseName}  ${grade.score}${details ? `  (${details})` : ""}`);
+  }
+}
+
+export function printJwExams(exams: JwExams): void {
+  console.log(`${exams.term.label} 学期考试安排`);
+  if (exams.items.length === 0) return console.log("暂无考试安排。");
+  for (const exam of exams.items) {
+    console.log(`${exam.time ?? "时间未定"}  ${exam.courseName}`);
+    const details = [exam.campus, exam.location, exam.seat && `座位 ${exam.seat}`].filter(Boolean).join(" · ");
+    if (details) console.log(`  ${details}`);
+  }
 }

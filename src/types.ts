@@ -139,3 +139,74 @@ export interface ClassSchedule {
   periods: ClassPeriod[];
   url: string;
 }
+
+/** 1 = first (autumn) term, 2 = second (spring) term, 3 = third (summer) term. */
+export type JwTermNumber = 1 | 2 | 3;
+
+export interface JwTerm {
+  /** Starting calendar year of the academic year, e.g. 2026 for 2026-2027. */
+  year: number;
+  term: JwTermNumber;
+  /** Human-readable form such as 2026-2027-1. */
+  label: string;
+}
+
+export interface JwProfile {
+  source: "hdu-jw";
+  /** Academic fields only; identity documents and other sensitive personal data are never included. */
+  fields: Record<string, string>;
+}
+
+export interface JwCourse {
+  name: string;
+  courseCode?: string;
+  teacher?: string;
+  /** 1 = Monday … 7 = Sunday; absent for courses without a fixed slot. */
+  weekday?: number;
+  weekdayName?: string;
+  periods?: string;
+  weeks?: string;
+  location?: string;
+  campus?: string;
+  credit?: string;
+}
+
+export interface JwTimetable {
+  source: "hdu-jw";
+  term: JwTerm;
+  courses: JwCourse[];
+  /** Practical or online courses that have no fixed weekly slot. */
+  unscheduled: JwCourse[];
+}
+
+export interface JwGrade {
+  term: string;
+  courseName: string;
+  courseCode?: string;
+  credit?: string;
+  score: string;
+  gradePoint?: string;
+  courseNature?: string;
+  examNature?: string;
+}
+
+export interface JwGrades {
+  source: "hdu-jw";
+  term?: JwTerm;
+  items: JwGrade[];
+}
+
+export interface JwExam {
+  courseName: string;
+  examName?: string;
+  time?: string;
+  location?: string;
+  campus?: string;
+  seat?: string;
+}
+
+export interface JwExams {
+  source: "hdu-jw";
+  term: JwTerm;
+  items: JwExam[];
+}
