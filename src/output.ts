@@ -1,6 +1,6 @@
 import type {
   Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
-  JwCourse, JwDay, JwExams, JwProgress, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
+  JwCourse, JwDay, JwExams, JwProgress, JwRooms, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
 import type { HduError } from "./errors.js";
 
@@ -194,5 +194,12 @@ export function printJwProgress(progress: JwProgress): void {
         .filter(Boolean).join(" · ");
       console.log(`  - ${course.name}（${details}）`);
     }
+  }
+}
+
+export function printJwRooms(result: JwRooms): void {
+  console.log(`${result.campus} · 第 ${result.week} 周 ${WEEKDAYS[result.weekday]} 第 ${result.periods.join(",")} 节空闲场地（${result.rooms.length} 间）`);
+  for (const room of result.rooms) {
+    console.log(`${room.name}${room.seats ? `  ${room.seats} 座` : ""}${room.type ? `  ${room.type}` : ""}`);
   }
 }

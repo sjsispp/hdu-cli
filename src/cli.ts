@@ -6,12 +6,13 @@ import { extractDeadlines } from "./deadlines.js";
 import { ERROR_EXIT_CODES, invalidArgument, toHduError } from "./errors.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
-  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwProgress, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
+  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwProgress, printJwRooms, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
   printServiceLinks
 } from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
 import { currentTerm, getExams, getGrades, getProfile, getTimetable, makeTerm } from "./sources/jw.js";
 import { getProgress } from "./sources/jw-progress.js";
+import { getEmptyRooms, parsePeriods } from "./sources/jw-rooms.js";
 import { getDay, getWeekTimetable } from "./sources/jw-week.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "./sources/service-info.js";
@@ -189,6 +190,29 @@ jw.command("progress").description("学业进度：官方 GPA、各类别学分�
   .action(async (options) => {
     const result = await getProgress();
     options.json ? printJson(result) : printJwProgress(result);
+  });
+
+function weekday(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 7) throw new InvalidArgumentError(`Expected a weekday 1-7, got: ${value}`);
+  return parsed;
+}
+
+jw.command("rooms").description("查询空闲教室，默认本周、今天")
+  .requiredOption("-p, --periods <periods>", "节次，如 1-2、3,4 或 1-2,6-7")
+  .option("-c, --campus <campus>", "校区：xiasha、qingshanhu、shaoxing 或中文名", "xiasha")
+  .option("-w, --week <week>", "教学周次", positiveInteger)
+  .option("--weekday <weekday>", "星期 1-7", weekday)
+  .option("-d, --date <date>", "按日期推算周次和星期，如 2026-10-21", calendarDate)
+  .option("-b, --building <text>", "按场地名称过滤，如 第6教研楼")
+  .option("--min-seats <seats>", "最少座位数", positiveInteger)
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const result = await getEmptyRooms({
+      campus: options.campus, periods: parsePeriods(options.periods), week: options.week, weekday: options.weekday,
+      date: options.date, building: options.building, minSeats: options.minSeats
+    });
+    options.json ? printJson(result) : printJwRooms(result);
   });
 
 addTermOptions(jw.command("grades").description("课程成绩，默认全部学期"))
