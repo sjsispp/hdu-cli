@@ -6,7 +6,7 @@ import { extractDeadlines } from "./deadlines.js";
 import { ERROR_EXIT_CODES, invalidArgument, toHduError } from "./errors.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
-  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwCourseOfferings, printJwProgress, printJwRooms, printJwSelections, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
+  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwCourseOfferings, printJwProgress, printJwRooms, printJwSelections, printJwThesis, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
   printServiceLinks
 } from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
@@ -14,6 +14,7 @@ import { currentTerm, getExams, getGrades, getProfile, getTimetable, makeTerm } 
 import { getSelections, searchCourseOfferings } from "./sources/jw-courses.js";
 import { getProgress } from "./sources/jw-progress.js";
 import { getEmptyRooms, parsePeriods } from "./sources/jw-rooms.js";
+import { getThesis } from "./sources/jw-thesis.js";
 import { getDay, getWeekTimetable } from "./sources/jw-week.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "./sources/service-info.js";
@@ -233,6 +234,13 @@ addTermOptions(jw.command("selections").description("本人选课结果，默认
   .action(async (options) => {
     const result = await getSelections(selectedTerm(options, currentTerm));
     options.json ? printJson(result) : printJwSelections(result);
+  });
+
+jw.command("thesis").description("毕业设计：课题、指导教师与答辩环节")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const result = await getThesis();
+    options.json ? printJson(result) : printJwThesis(result);
   });
 
 addTermOptions(jw.command("grades").description("课程成绩，默认全部学期"))

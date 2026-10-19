@@ -1,6 +1,6 @@
 import type {
   Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
-  JwCourse, JwCourseOfferings, JwDay, JwExams, JwProgress, JwRooms, JwSelections, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
+  JwCourse, JwCourseOfferings, JwDay, JwExams, JwProgress, JwRooms, JwSelections, JwThesis, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
 import type { HduError } from "./errors.js";
 
@@ -222,5 +222,19 @@ export function printJwSelections(result: JwSelections): void {
     const details = [course.credit && `${course.credit} 学分`, course.courseNature, course.teachers.join(","), course.weeks,
       course.retake ? "重修" : undefined].filter(Boolean).join(" · ");
     console.log(`${course.name}${details ? `  (${details})` : ""}`);
+  }
+}
+
+export function printJwThesis(thesis: JwThesis): void {
+  if (thesis.topics.length === 0) console.log("暂无毕业设计课题。");
+  for (const topic of thesis.topics) {
+    console.log(`课题：${topic.title}`);
+    const advisor = [topic.advisor, topic.advisorTitle, topic.department].filter(Boolean).join(" · ");
+    if (advisor) console.log(`  指导教师：${advisor}`);
+    if (topic.term) console.log(`  学期：${topic.term}`);
+  }
+  if (thesis.defenses.length > 0) {
+    console.log("\n答辩安排：");
+    for (const defense of thesis.defenses) console.log(`- ${defense.stage}${defense.term ? ` · ${defense.term}` : ""}`);
   }
 }
