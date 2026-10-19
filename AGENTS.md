@@ -10,7 +10,7 @@ Use the `hdu` command when the user asks for public information from Hangzhou Di
 - Use `hdu job notices --json`, `hdu job talks --json`, `hdu job fairs --json`, and `hdu job positions --json` for employment information.
 - Use `hdu job get <job.hdu.edu.cn-url> --json` for employment details.
 - Run `hdu auth status --json` before requesting authenticated employment fields. If login is needed, ask the user to run `hdu setup` (first time) or `hdu auth login` themselves in their terminal; never request their password or verification code.
-- Use `hdu jw profile --json`, `hdu jw timetable --json`, `hdu jw grades --json`, and `hdu jw exams --json` for the user's own academic records (`--year <start-year> --term 1|2|3` selects a term). These require `hdu auth login`; treat the results as private and only share what the user asked for.
+- Use `hdu jw` for the user's own academic records: `profile`, `timetable`, `week --week <n>`, `today [--date]`, `grades`, `exams`, `progress` (graduation credits), `selections`, `thesis`; and for school-wide lookups: `rooms --periods <p>` (empty classrooms) and `courses --query|--teacher|--location`. Add `--json`; `--year <start-year> --term 1|2|3` selects a term. Prefer `jw today`/`jw week` over computing teaching weeks yourself. These require `hdu auth login`; treat the results as private and only share what the user asked for.
 - Use `hdu service links --json` for official service entry URLs.
 - Use `hdu service phones --query <keyword> --json` for office phone numbers.
 - Use `hdu service buses --campus xiasha|shaoxing --json` for staff shuttle schedules, and verify temporary suspension notices in the result.
