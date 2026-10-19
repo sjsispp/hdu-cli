@@ -140,10 +140,14 @@ export function printJwGrades(grades: JwGrades): void {
 
 export function printJwExams(exams: JwExams): void {
   console.log(`${exams.term.label} 学期考试安排`);
-  if (exams.items.length === 0) return console.log("暂无考试安排。");
+  if (exams.items.length === 0) console.log("暂无已安排的考试。");
   for (const exam of exams.items) {
     console.log(`${exam.time ?? "时间未定"}  ${exam.courseName}`);
     const details = [exam.campus, exam.location, exam.seat && `座位 ${exam.seat}`].filter(Boolean).join(" · ");
     if (details) console.log(`  ${details}`);
+  }
+  if (exams.unscheduled.length > 0) {
+    console.log("\n尚未安排考试：");
+    for (const course of exams.unscheduled) console.log(`- ${course.courseName}${course.examName ? ` · ${course.examName}` : ""}`);
   }
 }

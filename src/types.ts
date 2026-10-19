@@ -209,4 +209,137 @@ export interface JwExams {
   source: "hdu-jw";
   term: JwTerm;
   items: JwExam[];
+  /** Courses whose exam has not been scheduled yet. */
+  unscheduled: { courseName: string; courseCode?: string; examName?: string; credit?: string; department?: string }[];
+}
+
+export interface JwTeachingWeek {
+  week: number;
+  /** ISO dates (YYYY-MM-DD), Monday to Sunday. */
+  start: string;
+  end: string;
+}
+
+export interface JwWeekTimetable {
+  source: "hdu-jw";
+  term: JwTerm;
+  week: JwTeachingWeek;
+  courses: JwCourse[];
+}
+
+export interface JwDay {
+  source: "hdu-jw";
+  date: string;
+  weekday: number;
+  term: JwTerm;
+  /** Absent outside the teaching calendar (e.g. during holidays). */
+  week?: JwTeachingWeek;
+  courses: JwCourse[];
+}
+
+export interface JwProgressCategory {
+  id: string;
+  parentId?: string;
+  name: string;
+  requiredCredits: number;
+  earnedCredits: number;
+  satisfied: boolean;
+}
+
+export interface JwProgressCourse {
+  name: string;
+  courseCode?: string;
+  credit?: string;
+  status: "in_progress" | "not_taken" | "other";
+  /** Term the plan suggests taking the course in, e.g. 2026-2027-2. */
+  plannedTerm?: string;
+}
+
+export interface JwOutstandingCategory {
+  id: string;
+  name: string;
+  path: string[];
+  requiredCredits: number;
+  earnedCredits: number;
+  missingCredits: number;
+  courses: JwProgressCourse[];
+}
+
+export interface JwProgress {
+  source: "hdu-jw";
+  gpa?: number;
+  courseCounts?: { planned: number; passed: number; failed: number; notTaken: number; inProgress: number };
+  categories: JwProgressCategory[];
+  /** Unmet categories whose parents are also unmet; an unmet child of a satisfied parent is an untaken alternative. */
+  outstanding: JwOutstandingCategory[];
+}
+
+export interface JwRoom {
+  name: string;
+  building?: string;
+  seats?: number;
+  examSeats?: number;
+  type?: string;
+  campus?: string;
+}
+
+export interface JwRooms {
+  source: "hdu-jw";
+  term: JwTerm;
+  campus: string;
+  week: number;
+  weekday: number;
+  periods: number[];
+  rooms: JwRoom[];
+}
+
+export interface JwCourseOffering {
+  courseCode: string;
+  name: string;
+  className: string;
+  credit?: string;
+  teachers: string[];
+  schedule?: string;
+  location?: string;
+  campus?: string;
+  enrolled?: number;
+  capacity?: number;
+  department?: string;
+  courseNature?: string;
+  assessment?: string;
+  weeks?: string;
+}
+
+export interface JwCourseOfferings {
+  source: "hdu-jw";
+  term: JwTerm;
+  total: number;
+  items: JwCourseOffering[];
+}
+
+export interface JwSelection {
+  courseCode?: string;
+  name: string;
+  className?: string;
+  credit?: string;
+  teachers: string[];
+  courseNature?: string;
+  category?: string;
+  department?: string;
+  weeks?: string;
+  selectedAt?: string;
+  selectionRound?: string;
+  retake: boolean;
+}
+
+export interface JwSelections {
+  source: "hdu-jw";
+  term: JwTerm;
+  items: JwSelection[];
+}
+
+export interface JwThesis {
+  source: "hdu-jw";
+  topics: { title: string; advisor?: string; advisorTitle?: string; department?: string; term?: string; keywordStatus?: string }[];
+  defenses: { stage: string; advisor?: string; term?: string }[];
 }

@@ -10,7 +10,7 @@ const BASE_URL = "https://newjw.hdu.edu.cn/jwglxt";
 const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) hdu-cli";
 
 /** ZFSoft encodes terms 1/2/3 as xqm 3/12/16. */
-const TERM_CODES: Record<JwTermNumber, string> = { 1: "3", 2: "12", 3: "16" };
+export const TERM_CODES: Record<JwTermNumber, string> = { 1: "3", 2: "12", 3: "16" };
 
 /**
  * Only these profile fields are returned. The page also shows identity numbers, household registration,
@@ -21,8 +21,7 @@ const PROFILE_FIELDS = [
   "学籍状态", "是否在校", "学历层次", "培养层次", "学生类别", "入学日期"
 ];
 
-type Row = Record<string, unknown>;
-
+export type Row = Record<string, unknown>;
 
 export function makeTerm(year: number, term: JwTermNumber): JwTerm {
   return { year, term, label: `${year}-${year + 1}-${term}` };
@@ -37,13 +36,13 @@ export function currentTerm(now = new Date()): JwTerm {
   return makeTerm(year - 1, 2);
 }
 
-function text(value: unknown): string | undefined {
+export function text(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;
   const trimmed = String(value).replace(/\s+/g, " ").trim();
   return trimmed || undefined;
 }
 
-function rows(data: unknown, key: string): Row[] {
+export function rows(data: unknown, key: string): Row[] {
   const list = (data as Record<string, unknown> | null)?.[key];
   return Array.isArray(list) ? (list as Row[]) : [];
 }
@@ -98,7 +97,7 @@ export function parseGrades(data: unknown, term?: JwTerm): JwGrades {
   return { source: "hdu-jw", ...(term ? { term } : {}), items };
 }
 
-export function parseExams(data: unknown, term: JwTerm): JwExams {
+export function parseExams(data: unknown, term: JwTerm, unscheduledData?: unknown): JwExams {
   const items: JwExam[] = rows(data, "items").map((row) => ({
     courseName: text(row.kcmc) ?? "未命名课程",
     examName: text(row.ksmc),
@@ -108,10 +107,17 @@ export function parseExams(data: unknown, term: JwTerm): JwExams {
     seat: text(row.zwh)
   }));
   items.sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
-  return { source: "hdu-jw", term, items };
+  const unscheduled = rows(unscheduledData, "items").map((row) => ({
+    courseName: text(row.kcmc) ?? "未命名课程",
+    courseCode: text(row.kch),
+    examName: text(row.ksmc),
+    credit: text(row.xf),
+    department: text(row.kkxy)
+  }));
+  return { source: "hdu-jw", term, items, unscheduled };
 }
 
-async function jwRequest(path: string, form?: Record<string, string>): Promise<Response> {
+export async function jwRequest(path: string, form?: Record<string, string>): Promise<Response> {
   const url = `${BASE_URL}${path}`;
   if (!isAllowedHduUrl(url)) throw new HduError("unsupported", `Refusing to fetch a non-HDU URL: ${url}`);
   const cookie = await getServiceSession("jw");
@@ -135,13 +141,13 @@ async function jwRequest(path: string, form?: Record<string, string>): Promise<R
 }
 
 /** Read-only query endpoints answer JSON; an HTML body means the session was rejected. */
-async function jwQuery(path: string, form: Record<string, string>): Promise<unknown> {
+export async function jwQuery(path: string, form: Record<string, string>): Promise<unknown> {
   const response = await jwRequest(path, form);
   if (!response.headers.get("content-type")?.includes("json")) throw authRequired("教务系统");
   return response.json();
 }
 
-const PAGE_ALL = {
+export const PAGE_ALL = {
   "queryModel.showCount": "5000", "queryModel.currentPage": "1", "queryModel.sortName": "",
   "queryModel.sortOrder": "asc", _search: "false", time: "0"
 };
@@ -166,8 +172,10 @@ export async function getGrades(term?: JwTerm): Promise<JwGrades> {
 }
 
 export async function getExams(term = currentTerm()): Promise<JwExams> {
-  const data = await jwQuery("/kwgl/kscx_cxXsksxxIndex.html?doType=query&gnmkdm=N358105", {
-    xnm: String(term.year), xqm: TERM_CODES[term.term], ...PAGE_ALL
-  });
-  return parseExams(data, term);
+  const form = { xnm: String(term.year), xqm: TERM_CODES[term.term], ...PAGE_ALL };
+  const [scheduled, unscheduled] = await Promise.all([
+    jwQuery("/kwgl/kscx_cxXsksxxIndex.html?doType=query&gnmkdm=N358105", form),
+    jwQuery("/kwgl/kscx_cxWpkskcList.html?doType=query&gnmkdm=N358105", form)
+  ]);
+  return parseExams(scheduled, term, unscheduled);
 }
