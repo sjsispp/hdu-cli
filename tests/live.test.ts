@@ -18,12 +18,13 @@ describe.runIf(live)("HDU main site live integration", () => {
 
   it("reads a public article", async () => {
     const result = await listSection("notices", { page: 1 });
-    const firstInternal = result.items.find((item) => !item.external);
-    expect(firstInternal).toBeDefined();
-    const article = await getArticle(firstInternal!.url);
-    expect(article.title.length).toBeGreaterThan(2);
-    expect(article.content.length).toBeGreaterThan(20);
-  });
+    // Some notices only embed a PDF or image, so look for the first one with body text.
+    const internal = result.items.filter((item) => !item.external).slice(0, 5);
+    expect(internal.length).toBeGreaterThan(0);
+    const articles = await Promise.all(internal.map((item) => getArticle(item.url)));
+    expect(articles.every((article) => article.title.length > 2)).toBe(true);
+    expect(articles.some((article) => article.content.length > 20)).toBe(true);
+  }, 30_000);
 });
 
 describe.runIf(live)("HDU employment site live integration", () => {
