@@ -3,10 +3,12 @@ import type {
   JwCourse, JwCourseOfferings, JwDay, JwExams, JwProgress, JwRooms, JwSelections, JwThesis, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
 import type { HduError } from "./errors.js";
+import { skillsNotice } from "./skill.js";
 
 /** Success envelope for --json: `{"ok": true, "data": ...}` on stdout. */
 export function printJson(data: unknown): void {
-  process.stdout.write(`${JSON.stringify({ ok: true, data }, null, 2)}\n`);
+  const notice = skillsNotice();
+  process.stdout.write(`${JSON.stringify({ ok: true, data, ...(notice ? { _notice: notice } : {}) }, null, 2)}\n`);
 }
 
 /** Failure envelope for --json: `{"ok": false, "error": {...}}` on stderr. */

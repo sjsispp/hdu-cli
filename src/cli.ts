@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { createRequire } from "node:module";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { authStatus, logout, SERVICES, sessionStorageLabel } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
@@ -20,16 +19,15 @@ import { getDay, getWeekTimetable } from "./sources/jw-week.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "./sources/service-info.js";
 import { type LoginMethod, performLogin, runSetup } from "./setup.js";
+import { bundledSkillNames, installedSkillsVersion, installSkills, uninstallSkills } from "./skill.js";
+import { CLI_VERSION } from "./version.js";
 import type {
   ArticleDeadlines, BusCampus, ClassCampus, JobPositionType, JobSiteSection, JwTerm, JwTermNumber, MainSiteSection,
   PhoneCategory
 } from "./types.js";
 
-// Both src/cli.ts and dist/cli.js sit one level below the package root.
-const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
-
 const program = new Command();
-program.name("hdu").description("查询杭州电子科技大学公开信息").version(version);
+program.name("hdu").description("查询杭州电子科技大学公开信息").version(CLI_VERSION);
 
 // In --json mode every failure, including usage errors, is reported as one JSON envelope on stderr.
 // Subcommands inherit these settings only if they are configured before the commands are added.
@@ -255,6 +253,34 @@ addTermOptions(jw.command("exams").description("考试安排，默认当前学�
     const result = await getExams(selectedTerm(options, currentTerm));
     options.json ? printJson(result) : printJwExams(result);
   });
+
+const skill = program.command("skill").description("为 Claude Code、Codex 等智能体安装 hdu 技能");
+skill.command("install").description("安装或更新 hdu 技能，让智能体在任意目录都知道如何使用 hdu")
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const result = await installSkills();
+    if (options.json) return printJson(result);
+    console.log(`已安装 ${result.skills.join("、")}：`);
+    for (const location of result.locations) {
+      console.log(`  ${location.agent}：${location.path}${location.mode === "symlink" ? "（链接）" : ""}`);
+    }
+    console.log("重新打开智能体会话后生效。");
+  });
+skill.command("status").description("查看 hdu 技能的安装状态")
+  .option("--json", "输出 JSON")
+  .action((options) => {
+    const installed = installedSkillsVersion();
+    const status = { installed: Boolean(installed), installedVersion: installed, cliVersion: CLI_VERSION,
+      upToDate: installed === CLI_VERSION, skills: bundledSkillNames() };
+    if (options.json) return printJson(status);
+    console.log(!installed ? "尚未安装 hdu 技能，运行 hdu skill install 安装。"
+      : status.upToDate ? `hdu 技能已是最新（${installed}）。`
+        : `hdu 技能版本 ${installed} 落后于 CLI ${CLI_VERSION}，运行 hdu skill install 更新。`);
+  });
+skill.command("uninstall").description("删除已安装的 hdu 技能").action(async () => {
+  const removed = await uninstallSkills();
+  console.log(removed.length > 0 ? `已删除：\n${removed.join("\n")}` : "没有找到已安装的 hdu 技能。");
+});
 
 const service = program.command("service").description("主站服务信息");
 service.command("links").description("列出图书馆、档案馆、校医院等服务入口")
