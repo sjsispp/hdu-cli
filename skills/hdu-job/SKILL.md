@@ -1,6 +1,6 @@
 ---
 name: hdu-job
-version: 0.4.0
+version: 0.5.0
 description: "杭电就业网（job.hdu.edu.cn）只读查询：招聘公告、宣讲会、招聘会、全职与实习岗位及其详情。当用户问校招、宣讲会、招聘会、实习或某公司来不来杭电时使用。不负责：投递简历、报名或收藏（不支持）、教务信息（走 hdu-jw）、学校通知（走 hdu-campus）。"
 metadata:
   requires:

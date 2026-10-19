@@ -1,6 +1,6 @@
 ---
 name: hdu-campus
-version: 0.4.0
+version: 0.5.0
 description: "杭电主站（www.hdu.edu.cn）公开信息：通知公告、讲座论坛、新闻、站内搜索、网页正文与附件、截止时间提取，以及办公电话、教职工班车、各校区上课作息时间和服务入口。当用户问学校通知、讲座、某部门电话、班车时刻、第几节课几点上时使用。不负责：本人课表成绩（走 hdu-jw）、招聘（走 hdu-job）。"
 metadata:
   requires:

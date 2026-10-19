@@ -1,6 +1,6 @@
 ---
 name: hdu-shared
-version: 0.4.0
+version: 0.5.0
 description: "Shared base for every hdu-* skill: installing the hdu CLI, HDU unified-identity login (DingTalk QR), auth status, the --json ok/error envelope and exit codes, and the read-only / privacy rules. Use when hdu is missing, a command returns auth_required or another error, or the user asks about logging in to 杭电统一身份认证. Not for answering domain questions — use hdu-jw, hdu-job or hdu-campus."
 metadata:
   requires:
