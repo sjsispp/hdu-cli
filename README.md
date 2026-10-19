@@ -49,12 +49,13 @@ hdu job get "https://job.hdu.edu.cn/job/view?id=..." --json
 ### 统一身份认证
 
 ```bash
-hdu auth login
+hdu auth login                    # 默认：终端显示二维码，用钉钉扫码
+hdu auth login --method browser   # 打开浏览器登录
 hdu auth status --json
 hdu auth logout
 ```
 
-`auth login` 会打开本机 Chrome、Edge 或 Chromium。请在学校统一身份认证页面中自行完成密码、验证码或短信验证。CLI 不读取和保存密码，只把登录成功后的 `job.hdu.edu.cn` 会话 Cookie 保存到 macOS 钥匙串。登录后，就业网读取命令会自动使用该会话。
+`auth login` 默认在终端中显示杭电统一身份认证的钉钉登录二维码，用手机钉钉扫码确认即可；二维码过期后会自动刷新，不需要本机浏览器。也可以用 `--method browser` 打开本机 Chrome、Edge 或 Chromium，在学校统一身份认证页面中自行完成密码、验证码或短信验证。两种方式下 CLI 都不读取和保存密码，只把登录成功后的 `job.hdu.edu.cn` 会话 Cookie 保存到 macOS 钥匙串。登录后，就业网读取命令会自动使用该会话。
 
 认证不会开放写操作；当前 CLI 不会投递简历、收藏岗位或报名活动。非 macOS 环境可以临时通过 `HDU_JOB_COOKIE` 提供会话。
 
