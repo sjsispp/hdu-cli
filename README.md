@@ -55,7 +55,11 @@ hdu auth status --json
 hdu auth logout
 ```
 
-`auth login` 默认在终端中显示杭电统一身份认证的钉钉登录二维码，用手机钉钉扫码确认即可；二维码过期后会自动刷新，不需要本机浏览器。也可以用 `--method browser` 打开本机 Chrome、Edge 或 Chromium，在学校统一身份认证页面中自行完成密码、验证码或短信验证。两种方式下 CLI 都不读取和保存密码，只把登录成功后的 `job.hdu.edu.cn` 会话 Cookie 加密保存在本机：macOS 使用钥匙串，Windows 使用当前账户的 DPAPI 加密后存放在 `%LOCALAPPDATA%\hdu-cli`，只有同一台电脑上的同一个 Windows 账户能解密。登录后，就业网读取命令会自动使用该会话。
+`auth login` 默认在终端中显示杭电统一身份认证的钉钉登录二维码，用手机钉钉扫码确认即可；二维码过期后会自动刷新，不需要本机浏览器。也可以用 `--method browser` 打开本机 Chrome、Edge 或 Chromium，在学校统一身份认证页面中自行完成密码、验证码或短信验证。两种方式下 CLI 都不读取和保存密码。
+
+登录成功后，CLI 保存统一身份认证（`sso.hdu.edu.cn`）的会话，并用它换取各网站的会话。某个网站的会话过期时，CLI 会自动用统一身份认证会话重新换取，无需再次扫码；只有统一身份认证会话本身过期后才需要重新登录。`hdu auth status` 会分别显示统一身份认证和各网站的状态。
+
+会话加密保存在本机：macOS 使用钥匙串，Windows 使用当前账户的 DPAPI 加密后存放在 `%LOCALAPPDATA%\hdu-cli`，只有同一台电脑上的同一个 Windows 账户能解密。统一身份认证会话在有效期内相当于你的登录凭证，请不要把它导出或分享。
 
 认证不会开放写操作；当前 CLI 不会投递简历、收藏岗位或报名活动。其他系统（如 Linux）可以临时通过 `HDU_JOB_COOKIE` 提供会话。
 
