@@ -26,6 +26,30 @@ npm install -g https://github.com/sjsispp/hdu-cli/releases/latest/download/hdu-c
 
 请不要使用 `npm install -g github:sjsispp/hdu-cli`：新版 npm 默认不运行依赖的构建脚本，这种方式装出来的包缺少编译产物。
 
+## 智能体技能（Skills）
+
+hdu 自带给 Claude Code、Codex 等智能体使用的技能说明，安装后智能体在任意目录都知道何时、如何调用 hdu：
+
+| 技能 | 负责 |
+| --- | --- |
+| `hdu-shared` | 安装、登录、JSON 输出约定与错误处理、只读和隐私规则（其他技能都先读它） |
+| `hdu-jw` | 教务系统：课表、成绩与 GPA、考试、学业进度、选课、毕业设计、空闲教室、开课查询 |
+| `hdu-job` | 就业网：招聘公告、宣讲会、招聘会、岗位 |
+| `hdu-campus` | 主站：通知、讲座、新闻、搜索、办公电话、班车、作息时间 |
+
+一键安装脚本和 `hdu setup` 会自动安装技能。也可以手动管理：
+
+```bash
+hdu skill install     # 安装或更新到 ~/.agents/skills，并链接到 ~/.claude/skills
+hdu skill status      # 查看是否与 CLI 版本一致
+hdu skill uninstall
+
+# 或使用通用的技能管理工具
+npx skills add sjsispp/hdu-cli -g
+```
+
+技能版本与 CLI 版本一致；版本不一致时，`--json` 输出会附带 `_notice.skills` 提示运行 `hdu skill install`（设置 `HDU_CLI_NO_SKILLS_NOTICE=1` 可关闭）。
+
 ## 开发
 
 ```bash
