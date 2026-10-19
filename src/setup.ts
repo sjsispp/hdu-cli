@@ -1,5 +1,7 @@
-import { access, constants } from "node:fs/promises";
-import { delimiter, join } from "node:path";
+import { spawn } from "node:child_process";
+import { access, constants, mkdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { delimiter, dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import QRCode from "qrcode";
 import { authStatus, loginWithBrowser, loginWithQr, SERVICES, type ServiceId } from "./auth.js";
@@ -17,17 +19,69 @@ export function parseLoginMethod(value: string): LoginMethod | undefined {
   return undefined;
 }
 
-/** Shared by `hdu auth login` and `hdu setup`. */
-export async function performLogin(method: LoginMethod, timeoutMs: number): Promise<void> {
+export interface LoginPresentation {
+  /** Machine-readable progress for agents: one JSON object per line on stdout. */
+  json?: boolean;
+  /** Open the QR code image in the system image viewer. */
+  open?: boolean;
+}
+
+const QR_IMAGE = join(tmpdir(), "hdu-cli", "login-qr.png");
+
+/** Command that opens a file with the platform's default application. */
+export function viewerCommand(path: string, platform: NodeJS.Platform = process.platform): [string, string[]] {
+  if (platform === "darwin") return ["open", [path]];
+  // `start` treats the first quoted argument as a window title, so pass an empty one.
+  if (platform === "win32") return ["cmd", ["/c", "start", "\"\"", path]];
+  return ["xdg-open", [path]];
+}
+
+/** Opens a file with the platform's default application, without waiting for it. */
+export function openWithSystemViewer(path: string): void {
+  const [command, args] = viewerCommand(path);
+  const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
+  child.on("error", () => { /* No viewer available; the image path is still reported. */ });
+  child.unref();
+}
+
+function emitEvent(event: string, data: unknown): void {
+  process.stdout.write(`${JSON.stringify({ ok: true, event, data })}\n`);
+}
+
+/**
+ * Shared by `hdu auth login` and `hdu setup`. With `json`, progress is written as JSON lines so an
+ * agent running the command in the background can show the QR image to the user; the final line
+ * (without `event`) carries the login status.
+ */
+export async function performLogin(method: LoginMethod, timeoutMs: number, presentation: LoginPresentation = {}): Promise<void> {
   if (method === "browser") {
-    console.log("请在打开的浏览器中完成杭电统一身份认证；CLI 不会读取或保存你的密码。");
+    if (presentation.json) emitEvent("browser_opened", { message: "请在打开的浏览器中完成杭电统一身份认证。" });
+    else console.log("请在打开的浏览器中完成杭电统一身份认证；CLI 不会读取或保存你的密码。");
     await loginWithBrowser(timeoutMs);
     return;
   }
-  await loginWithQr(async (content) => {
-    console.log(await QRCode.toString(content, { type: "utf8", errorCorrectionLevel: "L" }));
-    console.log("请使用钉钉扫描上方二维码并在手机上确认登录；二维码过期后会自动刷新。");
-  }, timeoutMs);
+  const useImage = presentation.json || presentation.open;
+  try {
+    await loginWithQr(async (content) => {
+      if (useImage) {
+        await mkdir(dirname(QR_IMAGE), { recursive: true });
+        await QRCode.toFile(QR_IMAGE, content, { width: 360, margin: 2, errorCorrectionLevel: "M" });
+      }
+      if (presentation.json) {
+        emitEvent("qr_code", {
+          image: QR_IMAGE, opened: Boolean(presentation.open),
+          message: "请用钉钉扫描二维码并在手机上确认登录；二维码过期后会自动刷新并再次输出。"
+        });
+      } else {
+        console.log(await QRCode.toString(content, { type: "utf8", errorCorrectionLevel: "L" }));
+        console.log("请使用钉钉扫描上方二维码并在手机上确认登录；二维码过期后会自动刷新。");
+        if (presentation.open) console.log(`二维码图片已在窗口中打开：${QR_IMAGE}`);
+      }
+      if (presentation.open) openWithSystemViewer(QR_IMAGE);
+    }, timeoutMs);
+  } finally {
+    if (useImage) await rm(QR_IMAGE, { force: true });
+  }
 }
 
 /** Finds an executable on PATH, honouring PATHEXT on Windows. */

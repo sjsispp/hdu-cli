@@ -112,9 +112,15 @@ program.command("setup").description("首次使用引导：检查环境并登录
 auth.command("login").description("登录杭电统一身份认证，会话加密保存在本机并自动续期")
   .option("-m, --method <method>", "qr（钉钉扫码，在终端显示二维码）或 browser（打开浏览器）", loginMethod, "qr")
   .option("--timeout <seconds>", "等待登录的秒数", positiveInteger, 300)
+  .option("--open", "在系统图片查看器中弹出二维码")
+  .option("--json", "以 JSON 行输出进度（供智能体在后台运行）：先输出二维码图片路径，登录完成后输出状态")
   .action(async (options) => {
-    await performLogin(options.method, options.timeout * 1000);
-    console.log(`登录成功，统一身份认证会话已保存到${sessionStorageLabel()}；各网站会话过期后会自动续期。`);
+    await performLogin(options.method, options.timeout * 1000, { json: options.json, open: options.open });
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify({ ok: true, data: await authStatus() })}\n`);
+    } else {
+      console.log(`登录成功，统一身份认证会话已保存到${sessionStorageLabel()}；各网站会话过期后会自动续期。`);
+    }
   });
 auth.command("status").description("检查统一身份认证和各网站的登录状态")
   .option("--json", "输出 JSON")
