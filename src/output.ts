@@ -1,6 +1,6 @@
 import type {
   Article, ArticleDeadlines, BusSchedule, ClassSchedule, JobSiteArticle, JobSiteListResult,
-  JwExams, JwGrades, JwProfile, JwTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
+  JwCourse, JwDay, JwExams, JwGrades, JwProfile, JwTimetable, JwWeekTimetable, ListItem, ListResult, PhoneOffice, ServiceLink
 } from "./types.js";
 import type { HduError } from "./errors.js";
 
@@ -150,4 +150,28 @@ export function printJwExams(exams: JwExams): void {
     console.log("\n尚未安排考试：");
     for (const course of exams.unscheduled) console.log(`- ${course.courseName}${course.examName ? ` · ${course.examName}` : ""}`);
   }
+}
+
+const WEEKDAYS = ["", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
+
+function printCourseLines(courses: JwCourse[], withWeekday: boolean): void {
+  for (const course of courses) {
+    const when = [withWeekday ? course.weekdayName : undefined, course.periods].filter(Boolean).join(" ");
+    console.log(`${when || "时间未定"}  ${course.name}`);
+    const details = [course.location, course.campus, course.teacher].filter(Boolean).join(" · ");
+    if (details) console.log(`  ${details}`);
+  }
+}
+
+export function printJwWeek(timetable: JwWeekTimetable): void {
+  console.log(`${timetable.term.label} 学期第 ${timetable.week.week} 周（${timetable.week.start} 至 ${timetable.week.end}）`);
+  if (timetable.courses.length === 0) return console.log("本周没有课程。");
+  printCourseLines(timetable.courses, true);
+}
+
+export function printJwDay(day: JwDay): void {
+  const week = day.week ? `第 ${day.week.week} 周` : "不在教学周内";
+  console.log(`${day.date} ${WEEKDAYS[day.weekday]} · ${day.term.label} 学期${week}`);
+  if (day.courses.length === 0) return console.log("没有课程。");
+  printCourseLines(day.courses, false);
 }

@@ -6,11 +6,12 @@ import { extractDeadlines } from "./deadlines.js";
 import { ERROR_EXIT_CODES, invalidArgument, toHduError } from "./errors.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
-  printJson, printJsonError, printJwExams, printJwGrades, printJwProfile, printJwTimetable, printList, printPhones, printSearch,
+  printJson, printJsonError, printJwDay, printJwExams, printJwGrades, printJwProfile, printJwTimetable, printJwWeek, printList, printPhones, printSearch,
   printServiceLinks
 } from "./output.js";
 import { getJobSiteArticle, listJobSite } from "./sources/job-site.js";
 import { currentTerm, getExams, getGrades, getProfile, getTimetable, makeTerm } from "./sources/jw.js";
+import { getDay, getWeekTimetable } from "./sources/jw-week.js";
 import { getArticle, listSection, searchMainSite } from "./sources/main-site.js";
 import { getBusSchedule, getClassSchedule, listPhones, listServiceLinks } from "./sources/service-info.js";
 import { type LoginMethod, performLogin, runSetup } from "./setup.js";
@@ -158,6 +159,28 @@ addTermOptions(jw.command("timetable").description("个人课表，默认当前�
   .action(async (options) => {
     const result = await getTimetable(selectedTerm(options, currentTerm));
     options.json ? printJson(result) : printJwTimetable(result);
+  });
+
+function calendarDate(value: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : undefined;
+  if (!date || date.getDate() !== Number(match![3])) throw new InvalidArgumentError(`Expected a date like 2026-10-19, got: ${value}`);
+  return date;
+}
+
+jw.command("today").description("某天的课程（按教学周计算，含调课），默认今天")
+  .option("-d, --date <date>", "日期，如 2026-10-21", calendarDate)
+  .option("--json", "输出 JSON")
+  .action(async (options) => {
+    const result = await getDay(options.date);
+    options.json ? printJson(result) : printJwDay(result);
+  });
+
+addTermOptions(jw.command("week").description("某一教学周的课表（含调课），默认本周"))
+  .option("-w, --week <week>", "教学周次", positiveInteger)
+  .action(async (options) => {
+    const result = await getWeekTimetable({ term: selectedTerm(options, () => undefined), week: options.week });
+    options.json ? printJson(result) : printJwWeek(result);
   });
 
 addTermOptions(jw.command("grades").description("课程成绩，默认全部学期"))
