@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { authStatus, logout, SERVICES, sessionStorageLabel } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
@@ -17,8 +18,11 @@ import type {
   PhoneCategory
 } from "./types.js";
 
+// Both src/cli.ts and dist/cli.js sit one level below the package root.
+const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
+
 const program = new Command();
-program.name("hdu").description("查询杭州电子科技大学公开信息").version("0.3.0");
+program.name("hdu").description("查询杭州电子科技大学公开信息").version(version);
 
 function positiveInteger(value: string): number {
   const parsed = Number(value);
