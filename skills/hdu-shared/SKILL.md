@@ -29,7 +29,7 @@ Always pass `--json`.
 
 | `error.type` | exit | What to do |
 | --- | --- | --- |
-| `auth_required` | 3 | Login needed → read [`references/login.md`](references/login.md) |
+| `auth_required` | 3 | Login needed → start `hdu auth login --json --open` in the background as described in [`references/login.md`](references/login.md) |
 | `invalid_argument` | 2 | Fix the arguments; run `hdu <command> --help` |
 | `network` | 4 | Retry once; off campus some systems may need the school VPN |
 | `upstream` | 5 | School site unavailable — tell the user, do not loop |

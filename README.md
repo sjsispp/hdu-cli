@@ -103,11 +103,15 @@ hdu job get "https://job.hdu.edu.cn/job/view?id=..." --json
 ```bash
 hdu auth login                    # 默认：终端显示二维码，用钉钉扫码
 hdu auth login --method browser   # 打开浏览器登录
+hdu auth login --open             # 同时在系统图片查看器中弹出二维码
+hdu auth login --json --open      # 供智能体后台运行：逐行输出二维码图片路径和最终登录状态
 hdu auth status --json
 hdu auth logout
 ```
 
 `auth login` 默认在终端中显示杭电统一身份认证的钉钉登录二维码，用手机钉钉扫码确认即可；二维码过期后会自动刷新，不需要本机浏览器。也可以用 `--method browser` 打开本机 Chrome、Edge 或 Chromium，在学校统一身份认证页面中自行完成密码、验证码或短信验证。两种方式下 CLI 都不读取和保存密码。
+
+智能体可以在后台运行 `hdu auth login --json --open` 代为发起登录：二维码会在窗口中弹出，用户用手机钉钉扫码确认即可，全程不经过智能体的密码输入。`--json` 模式下每行一个 JSON 对象：`{"ok":true,"event":"qr_code","data":{"image":"…"}}` 表示二维码已就绪（过期刷新时会再次输出），最后一行（不含 `event`）为登录后的状态。
 
 登录成功后，CLI 保存统一身份认证（`sso.hdu.edu.cn`）的会话，并用它换取各网站的会话。某个网站的会话过期时，CLI 会自动用统一身份认证会话重新换取，无需再次扫码；只有统一身份认证会话本身过期后才需要重新登录。`hdu auth status` 会分别显示统一身份认证和各网站的状态。
 
