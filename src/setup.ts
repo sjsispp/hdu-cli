@@ -62,19 +62,19 @@ export async function performLogin(method: LoginMethod, timeoutMs: number, prese
   }
   const useImage = presentation.json || presentation.open;
   try {
-    await loginWithQr(async (content) => {
+    await loginWithQr(async (content, lifetimeMs) => {
       if (useImage) {
         await mkdir(dirname(QR_IMAGE), { recursive: true });
         await QRCode.toFile(QR_IMAGE, content, { width: 360, margin: 2, errorCorrectionLevel: "M" });
       }
       if (presentation.json) {
         emitEvent("qr_code", {
-          image: QR_IMAGE, opened: Boolean(presentation.open),
-          message: "请用钉钉扫描二维码并在手机上确认登录；二维码过期后会自动刷新并再次输出。"
+          image: QR_IMAGE, opened: Boolean(presentation.open), expiresInSeconds: Math.round(lifetimeMs / 1000),
+          message: "请用钉钉扫描二维码并在手机上确认登录；二维码到期后会自动换新并再次输出。"
         });
       } else {
         console.log(await QRCode.toString(content, { type: "utf8", errorCorrectionLevel: "L" }));
-        console.log("请使用钉钉扫描上方二维码并在手机上确认登录；二维码过期后会自动刷新。");
+        console.log(`请使用钉钉扫描上方二维码并在手机上确认登录；二维码约 ${Math.round(lifetimeMs / 1000)} 秒后自动换新。`);
         if (presentation.open) console.log(`二维码图片已在窗口中打开：${QR_IMAGE}`);
       }
       if (presentation.open) openWithSystemViewer(QR_IMAGE);

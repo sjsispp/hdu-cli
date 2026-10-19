@@ -176,9 +176,17 @@ export interface QrLoginOptions {
   /** Service URL registered with the HDU SSO, e.g. https://job.hdu.edu.cn/default/hdu. */
   service: string;
   timeoutMs: number;
-  /** Called with the URL encoded in each new QR code so the caller can render it. */
-  onQrCode: (content: string) => void | Promise<void>;
+  /** Called with the URL encoded in each new QR code and how long it will be shown. */
+  onQrCode: (content: string, lifetimeMs: number) => void | Promise<void>;
+  /** How long one QR code is used before a fresh one is issued (default 2 minutes). */
+  qrLifetimeMs?: number;
 }
+
+/**
+ * The scan endpoint keeps answering 408 "wait" for an expired code, while the signed link inside the
+ * code stops working in DingTalk, so codes are replaced on a client-side timer.
+ */
+const QR_LIFETIME_MS = 120_000;
 
 /**
  * Logs in to the HDU SSO by DingTalk QR scan and follows the CAS ticket to the service.
@@ -196,11 +204,13 @@ export async function loginWithDingTalkQr(options: QrLoginOptions): Promise<{ ja
     if (loginId.code !== 200 || !loginId.data) throw new HduError("upstream", "The HDU SSO did not issue a QR login id.", "统一身份认证暂时不可用，请稍后重试。");
 
     const qr = await ssoRequest(jar, `${SSO_ORIGIN}/api/public/qrlogin/qrgen/${encodeURIComponent(loginId.data)}/dingDingQr`);
-    await options.onQrCode(decodeQrPng(qr.body));
+    const lifetimeMs = Math.min(options.qrLifetimeMs ?? QR_LIFETIME_MS, deadline - Date.now());
+    await options.onQrCode(decodeQrPng(qr.body), lifetimeMs);
+    const qrDeadline = Date.now() + lifetimeMs;
 
     // The scan endpoint long-polls (~30 s) and answers 408 "wait" until the code is scanned and confirmed.
     let username: string | undefined;
-    while (Date.now() < deadline) {
+    while (Date.now() < qrDeadline) {
       let status: { code: number; data: string };
       try {
         status = await ssoJson<string>(jar, `/api/protected/qrlogin/scan/${encodeURIComponent(loginId.data)}`, 45_000);
@@ -212,7 +222,7 @@ export async function loginWithDingTalkQr(options: QrLoginOptions): Promise<{ ja
         username = status.data;
         break;
       }
-      if (status.code !== 408) break; // Expired or cancelled: issue a fresh QR code.
+      if (status.code !== 408) break; // Cancelled or rejected: issue a fresh QR code.
     }
     if (!username) continue;
 

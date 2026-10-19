@@ -37,3 +37,31 @@ describe("HDU SSO helpers", () => {
     expect(decodeQrPng(await QRCode.toBuffer(content))).toBe(content);
   });
 });
+
+describe("DingTalk QR refresh", () => {
+  it("issues fresh QR codes even though the scan endpoint never reports expiry", async () => {
+    const { vi } = await import("vitest");
+    const { loginWithDingTalkQr } = await import("../src/sso.js");
+    let issued = 0;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/qrlogin/loginid")) return Response.json({ code: 200, data: `id${++issued}` });
+      if (url.includes("/qrlogin/qrgen/")) {
+        return new Response(new Uint8Array(await QRCode.toBuffer(`https://sso.hdu.edu.cn/api/public/redirect/${url.split("/").at(-2)}`)));
+      }
+      if (url.includes("/qrlogin/scan/")) return Response.json({ code: 408, message: "Request Timeout", data: "wait" });
+      return new Response(`<p id="login-page-flowkey">flow</p>`, { headers: { "content-type": "text/html" } });
+    });
+    const shown: string[] = [];
+    try {
+      await expect(loginWithDingTalkQr({
+        service: "https://job.hdu.edu.cn/default/hdu", timeoutMs: 300, qrLifetimeMs: 60,
+        onQrCode: (content) => { shown.push(content); }
+      })).rejects.toMatchObject({ type: "auth_required" });
+    } finally {
+      fetchMock.mockRestore();
+    }
+    expect(shown.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(shown).size).toBe(shown.length);
+  });
+});

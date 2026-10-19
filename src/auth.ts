@@ -180,7 +180,7 @@ export async function loginWithBrowser(timeoutMs = 5 * 60_000): Promise<void> {
 }
 
 export async function loginWithQr(
-  onQrCode: (content: string) => void | Promise<void>, timeoutMs = 5 * 60_000
+  onQrCode: (content: string, lifetimeMs: number) => void | Promise<void>, timeoutMs = 5 * 60_000
 ): Promise<void> {
   const { jar } = await loginWithDingTalkQr({ service: SERVICES.job.service, timeoutMs, onQrCode });
   await completeLogin(jar.export(SSO_HOST));
