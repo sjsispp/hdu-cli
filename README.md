@@ -2,7 +2,31 @@
 
 面向人和智能体的杭州电子科技大学信息 CLI。目前支持学校主站、杭电就业网和本科教务系统，保持只读，可通过钉钉扫码或浏览器完成学校统一身份认证。
 
-## 使用
+## 安装
+
+需要 Node.js 20 或更高版本。
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/sjsispp/hdu-cli/main/install.sh | sh
+```
+
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/sjsispp/hdu-cli/main/install.ps1 | iex
+```
+
+也可以直接用 npm 安装最新发布版：
+
+```bash
+npm install -g https://github.com/sjsispp/hdu-cli/releases/latest/download/hdu-cli.tgz
+```
+
+安装后运行 `hdu setup` 完成首次使用引导。升级时重新执行安装命令即可；卸载使用 `npm uninstall -g hdu-cli`。安装脚本可以通过 `HDU_CLI_VERSION=v0.4.0` 指定版本。
+
+请不要使用 `npm install -g github:sjsispp/hdu-cli`：新版 npm 默认不运行依赖的构建脚本，这种方式装出来的包缺少编译产物。
+
+## 开发
 
 ```bash
 npm install
@@ -21,7 +45,7 @@ npm run dev -- service buses --campus xiasha --json
 npm run dev -- service class-times --campus qingshanhu --json
 ```
 
-构建并作为本地命令使用：
+从源码构建并作为本地命令使用：
 
 ```bash
 npm run build
@@ -112,6 +136,12 @@ hdu --version
 ```
 
 本项目同时提供了 `AGENTS.md`，当 Codex 在此仓库中工作时，会获知应优先使用 `hdu ... --json` 查询杭电公开信息。
+
+## 发布
+
+1. 修改 `package.json` 中的 `version`，提交后推送到 `main`。
+2. 打上同名标签并推送，例如 `git tag v0.4.0 && git push origin v0.4.0`。
+3. GitHub Actions 会在 Ubuntu、macOS 和 Windows 上运行类型检查与测试，然后创建 Release 并附上 `hdu-cli.tgz`，安装脚本会自动使用最新版本。
 
 ## 测试
 

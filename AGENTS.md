@@ -16,6 +16,6 @@ Use the `hdu` command when the user asks for public information from Hangzhou Di
 - Use `hdu service buses --campus xiasha|shaoxing --json` for staff shuttle schedules, and verify temporary suspension notices in the result.
 - Use `hdu service class-times --campus xiasha|shaoxing|qingshanhu --json` for class periods.
 - This version is read-only. Authentication only supplies a read session. Do not submit applications, register for events, collect jobs, select or drop courses, or perform other state-changing actions.
-- If `hdu` is unavailable, run `npm run build` followed by `npm link` from this repository, or use `npm run dev -- <arguments>`.
+- If `hdu` is unavailable, suggest the one-line installer in README.md; inside this repository you can instead run `npm run build` followed by `npm link`, or use `npm run dev -- <arguments>`.
 
 When changing the project, keep commits small and focused, run `npm run typecheck`, `npm test`, `npm run test:live`, and `npm run build`, and preserve the existing read-only and HDU-domain restrictions.
