@@ -23,7 +23,11 @@ describe("HDU SSO helpers", () => {
     jar.setFromResponse("https://job.hdu.edu.cn/", ["evil=1; Domain=example.com"]);
     expect(jar.header("https://sso.hdu.edu.cn/api")).toBe("SESSION=abc; TGC=t1");
     expect(jar.header("https://job.hdu.edu.cn/home")).toBe("PHPSESSID2=p1");
-    expect(jar.hostCookies("job.hdu.edu.cn")).toBe("PHPSESSID2=p1");
+    expect(jar.export("sso.hdu.edu.cn")).toEqual([
+      { domain: "sso.hdu.edu.cn", name: "SESSION", value: "abc" },
+      { domain: "sso.hdu.edu.cn", name: "TGC", value: "t1" }
+    ]);
+    expect(new CookieJar(jar.export("job.hdu.edu.cn")).header("https://job.hdu.edu.cn/")).toBe("PHPSESSID2=p1");
     jar.setFromResponse("https://sso.hdu.edu.cn/logout", ["TGC=; Max-Age=0"]);
     expect(jar.header("https://sso.hdu.edu.cn/")).toBe("SESSION=abc");
   });

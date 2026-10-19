@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import QRCode from "qrcode";
-import { clearJobSession, jobAuthStatus, loginToJobSite, loginToJobSiteWithQr, sessionStorageLabel } from "./auth.js";
+import { authStatus, loginWithBrowser, loginWithQr, logout, SERVICES, sessionStorageLabel } from "./auth.js";
 import { extractDeadlines } from "./deadlines.js";
 import {
   printArticle, printBusSchedule, printClassSchedule, printDeadlines, printJobArticle, printJobList,
@@ -79,31 +79,35 @@ job.command("get").description("读取就业网详情")
   });
 
 const auth = program.command("auth").description("杭电统一身份认证会话");
-auth.command("login").description("登录杭电统一身份认证并将就业网会话加密保存到本机")
+auth.command("login").description("登录杭电统一身份认证，会话加密保存在本机并自动续期")
   .option("-m, --method <method>", "qr（钉钉扫码，在终端显示二维码）或 browser（打开浏览器）", "qr")
   .option("--timeout <seconds>", "等待登录的秒数", positiveInteger, 300)
   .action(async (options) => {
     if (options.method === "browser") {
       console.log("请在打开的浏览器中完成杭电统一身份认证；CLI 不会读取或保存你的密码。");
-      await loginToJobSite(options.timeout * 1000);
+      await loginWithBrowser(options.timeout * 1000);
     } else if (options.method === "qr") {
-      await loginToJobSiteWithQr(async (content) => {
+      await loginWithQr(async (content) => {
         console.log(await QRCode.toString(content, { type: "utf8", errorCorrectionLevel: "L" }));
         console.log("请使用钉钉扫描上方二维码并在手机上确认登录；二维码过期后会自动刷新。");
       }, options.timeout * 1000);
     } else {
       throw new Error(`Unknown login method: ${options.method}. Use qr or browser.`);
     }
-    console.log(`登录成功，就业网会话已保存到${sessionStorageLabel()}。`);
+    console.log(`登录成功，统一身份认证会话已保存到${sessionStorageLabel()}；各网站会话过期后会自动续期。`);
   });
-auth.command("status").description("检查就业网登录状态")
+auth.command("status").description("检查统一身份认证和各网站的登录状态")
   .option("--json", "输出 JSON")
   .action(async (options) => {
-    const status = await jobAuthStatus();
-    options.json ? printJson(status) : console.log(status.authenticated ? `已登录（${status.storage}）` : "未登录或会话已过期");
+    const status = await authStatus();
+    if (options.json) return printJson(status);
+    console.log(`统一身份认证：${status.sso ? "已登录" : "未登录或已过期，请运行 hdu auth login"}（${status.storage}）`);
+    for (const [id, active] of Object.entries(status.services)) {
+      console.log(`${SERVICES[id as keyof typeof SERVICES].name}：${active ? "可用" : "不可用"}`);
+    }
   });
-auth.command("logout").description("删除本机保存的就业网会话").action(async () => {
-  console.log((await clearJobSession()) ? `已从${sessionStorageLabel()}删除就业网会话。` : "没有找到已保存的就业网会话。");
+auth.command("logout").description("删除本机保存的统一身份认证和各网站会话").action(async () => {
+  console.log((await logout()) ? `已从${sessionStorageLabel()}删除登录会话。` : "没有找到已保存的登录会话。");
 });
 
 const service = program.command("service").description("主站服务信息");

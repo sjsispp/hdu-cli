@@ -4,7 +4,8 @@ import jsQRModule from "jsqr";
 import { PNG } from "pngjs";
 import { delay, isAllowedHduUrl } from "./http.js";
 
-const SSO_ORIGIN = "https://sso.hdu.edu.cn";
+export const SSO_HOST = "sso.hdu.edu.cn";
+const SSO_ORIGIN = `https://${SSO_HOST}`;
 const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) hdu-cli";
 const MAX_REDIRECTS = 10;
 
@@ -12,9 +13,36 @@ const MAX_REDIRECTS = 10;
 type DecodeQr = (data: Uint8ClampedArray, width: number, height: number) => { data: string } | null;
 const jsQR = ((jsQRModule as unknown as { default?: DecodeQr }).default ?? jsQRModule) as unknown as DecodeQr;
 
+export interface StoredCookie {
+  domain: string;
+  name: string;
+  value: string;
+}
+
+function domainMatches(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
 /** Minimal cookie jar that keeps cookies per domain; paths and expiry are ignored for short login flows. */
 export class CookieJar {
   private readonly store = new Map<string, Map<string, string>>();
+
+  constructor(cookies: StoredCookie[] = []) {
+    for (const { domain, name, value } of cookies) this.set(domain, name, value);
+  }
+
+  private set(domain: string, name: string, value: string): void {
+    const normalized = domain.replace(/^\./, "").toLowerCase();
+    const cookies = this.store.get(normalized) ?? new Map<string, string>();
+    cookies.set(name, value);
+    this.store.set(normalized, cookies);
+  }
+
+  /** Every cookie that would be sent to this host, with its domain, for persisting a session. */
+  export(host: string): StoredCookie[] {
+    return [...this.store].filter(([domain]) => domainMatches(host, domain))
+      .flatMap(([domain, cookies]) => [...cookies].map(([name, value]) => ({ domain, name, value })));
+  }
 
   setFromResponse(url: string, setCookieHeaders: string[]): void {
     const host = new URL(url).hostname;
@@ -28,11 +56,9 @@ export class CookieJar {
         .map((attribute) => attribute.trim().split("="))
         .find(([key]) => key.toLowerCase() === "domain")?.[1];
       const domain = (domainAttribute ?? host).replace(/^\./, "").toLowerCase();
-      if (host !== domain && !host.endsWith(`.${domain}`)) continue;
-      const cookies = this.store.get(domain) ?? new Map<string, string>();
-      if (value === "" || /max-age=0\b/i.test(header)) cookies.delete(name);
-      else cookies.set(name, value);
-      this.store.set(domain, cookies);
+      if (!domainMatches(host, domain)) continue;
+      if (value === "" || /max-age=0\b/i.test(header)) this.store.get(domain)?.delete(name);
+      else this.set(domain, name, value);
     }
   }
 
@@ -40,16 +66,10 @@ export class CookieJar {
     const host = new URL(url).hostname;
     const pairs: string[] = [];
     for (const [domain, cookies] of this.store) {
-      if (host !== domain && !host.endsWith(`.${domain}`)) continue;
+      if (!domainMatches(host, domain)) continue;
       for (const [name, value] of cookies) pairs.push(`${name}=${value}`);
     }
     return pairs.join("; ");
-  }
-
-  /** Cookies issued for exactly this host, suitable for persisting a single site's session. */
-  hostCookies(host: string): string {
-    const cookies = this.store.get(host);
-    return cookies ? [...cookies].map(([name, value]) => `${name}=${value}`).join("; ") : "";
   }
 }
 
@@ -77,12 +97,16 @@ export function decodeQrPng(png: Buffer): string {
 export async function ssoRequest(
   jar: CookieJar,
   url: string,
-  init: { method?: "GET" | "POST"; body?: URLSearchParams; headers?: Record<string, string>; timeoutMs?: number } = {}
-): Promise<{ url: string; status: number; body: Buffer }> {
+  init: {
+    method?: "GET" | "POST"; body?: URLSearchParams; headers?: Record<string, string>; timeoutMs?: number;
+    maxRedirects?: number;
+  } = {}
+): Promise<{ url: string; status: number; location?: string; body: Buffer }> {
   let current = url;
   let method = init.method ?? "GET";
   let body: URLSearchParams | undefined = init.body;
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+  const maxRedirects = init.maxRedirects ?? MAX_REDIRECTS;
+  for (let hop = 0; ; hop += 1) {
     if (!isAllowedHduUrl(current)) throw new Error(`Refusing to follow a non-HDU URL during login: ${current}`);
     const cookie = jar.header(current);
     const response = await fetch(current, {
@@ -99,6 +123,9 @@ export async function ssoRequest(
     jar.setFromResponse(current, response.headers.getSetCookie());
     const location = response.headers.get("location");
     if (response.status >= 300 && response.status < 400 && location) {
+      if (hop >= maxRedirects) {
+        return { url: current, status: response.status, location: new URL(location, current).toString(), body: Buffer.alloc(0) };
+      }
       current = new URL(location, current).toString();
       method = "GET";
       body = undefined;
@@ -106,12 +133,42 @@ export async function ssoRequest(
     }
     return { url: current, status: response.status, body: Buffer.from(await response.arrayBuffer()) };
   }
-  throw new Error(`Too many redirects while logging in to ${url}`);
 }
 
 async function ssoJson<T>(jar: CookieJar, path: string, timeoutMs?: number): Promise<{ code: number; data: T }> {
   const response = await ssoRequest(jar, `${SSO_ORIGIN}${path}`, { headers: csrfHeaders(), timeoutMs });
   return JSON.parse(response.body.toString("utf8")) as { code: number; data: T };
+}
+
+export function ssoLoginUrl(service: string): string {
+  return `${SSO_ORIGIN}/login?service=${encodeURIComponent(service)}`;
+}
+
+/** True when the SSO session would issue a ticket for the service without asking the user to log in again. */
+export async function ssoSessionIsActive(cookies: StoredCookie[], service: string): Promise<boolean> {
+  if (cookies.length === 0) return false;
+  try {
+    const response = await ssoRequest(new CookieJar(cookies), ssoLoginUrl(service), { maxRedirects: 0 });
+    return Boolean(response.location?.includes("ticket="));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Uses a saved SSO session to obtain a fresh session on a CAS-protected HDU site.
+ * Returns undefined when the SSO session has expired and the user must log in again.
+ */
+export async function exchangeSsoSession(
+  cookies: StoredCookie[], service: string
+): Promise<{ serviceCookie: string; ssoCookies: StoredCookie[] } | undefined> {
+  if (cookies.length === 0) return undefined;
+  const jar = new CookieJar(cookies);
+  const result = await ssoRequest(jar, ssoLoginUrl(service));
+  const serviceHost = new URL(service).hostname;
+  if (new URL(result.url).hostname !== serviceHost) return undefined;
+  const serviceCookie = jar.header(`https://${serviceHost}/`);
+  return serviceCookie ? { serviceCookie, ssoCookies: jar.export(SSO_HOST) } : undefined;
 }
 
 export interface QrLoginOptions {
@@ -128,7 +185,7 @@ export interface QrLoginOptions {
  */
 export async function loginWithDingTalkQr(options: QrLoginOptions): Promise<{ jar: CookieJar; finalUrl: string }> {
   const jar = new CookieJar();
-  const loginUrl = `${SSO_ORIGIN}/login?service=${encodeURIComponent(options.service)}`;
+  const loginUrl = ssoLoginUrl(options.service);
   const deadline = Date.now() + options.timeoutMs;
 
   while (Date.now() < deadline) {
