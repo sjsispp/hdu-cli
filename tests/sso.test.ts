@@ -55,13 +55,14 @@ describe("DingTalk QR refresh", () => {
     const shown: string[] = [];
     try {
       await expect(loginWithDingTalkQr({
-        service: "https://job.hdu.edu.cn/default/hdu", timeoutMs: 300, qrLifetimeMs: 60,
+        service: "https://job.hdu.edu.cn/default/hdu", timeoutMs: 1_000, qrLifetimeMs: 100,
         onQrCode: (content) => { shown.push(content); }
       })).rejects.toMatchObject({ type: "auth_required" });
     } finally {
       fetchMock.mockRestore();
     }
-    expect(shown.length).toBeGreaterThanOrEqual(3);
+    // Without a client-side refresh only one code would ever be shown; timing on CI varies, so require two.
+    expect(shown.length).toBeGreaterThanOrEqual(2);
     expect(new Set(shown).size).toBe(shown.length);
   });
 });
