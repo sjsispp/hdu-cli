@@ -10,11 +10,12 @@ Use the `hdu` command when the user asks for public information from Hangzhou Di
 - Use `hdu job notices --json`, `hdu job talks --json`, `hdu job fairs --json`, and `hdu job positions --json` for employment information.
 - Use `hdu job get <job.hdu.edu.cn-url> --json` for employment details.
 - Run `hdu auth status --json` before requesting authenticated employment fields. If login is needed, ask the user to complete `hdu auth login` interactively; never request their password or verification code.
+- Use `hdu jw profile --json`, `hdu jw timetable --json`, `hdu jw grades --json`, and `hdu jw exams --json` for the user's own academic records (`--year <start-year> --term 1|2|3` selects a term). These require `hdu auth login`; treat the results as private and only share what the user asked for.
 - Use `hdu service links --json` for official service entry URLs.
 - Use `hdu service phones --query <keyword> --json` for office phone numbers.
 - Use `hdu service buses --campus xiasha|shaoxing --json` for staff shuttle schedules, and verify temporary suspension notices in the result.
 - Use `hdu service class-times --campus xiasha|shaoxing|qingshanhu --json` for class periods.
-- This version is read-only. Authentication only supplies a read session. Do not submit applications, register for events, collect jobs, select courses, or perform other state-changing actions.
+- This version is read-only. Authentication only supplies a read session. Do not submit applications, register for events, collect jobs, select or drop courses, or perform other state-changing actions.
 - If `hdu` is unavailable, run `npm run build` followed by `npm link` from this repository, or use `npm run dev -- <arguments>`.
 
 When changing the project, keep commits small and focused, run `npm run typecheck`, `npm test`, `npm run test:live`, and `npm run build`, and preserve the existing read-only and HDU-domain restrictions.
