@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install the latest hdu-cli release:
 #   curl -fsSL https://raw.githubusercontent.com/sjsispp/hdu-cli/main/install.sh | sh
-# Set HDU_CLI_VERSION=v0.4.0 to install a specific release.
+# Set HDU_CLI_VERSION=v0.4.0 to install a specific release, HDU_CLI_SKIP_SKILLS=1 to skip agent skills.
 set -eu
 
 REPO="sjsispp/hdu-cli"
@@ -26,6 +26,10 @@ printf '正在安装 hdu-cli：%s\n' "$URL"
 npm install -g "$URL"
 
 if command -v hdu >/dev/null 2>&1; then
+  # Agent skills let Claude Code, Codex and others use hdu from any directory; HDU_CLI_SKIP_SKILLS=1 skips this.
+  if [ -z "${HDU_CLI_SKIP_SKILLS:-}" ]; then
+    hdu skill install || printf '技能安装失败，可稍后运行 hdu skill install。\n' >&2
+  fi
   printf '\n安装完成：hdu %s\n运行 hdu setup 开始首次使用引导。\n' "$(hdu --version)"
 else
   printf '\n安装完成，但当前终端找不到 hdu 命令。\n请把 %s 加入 PATH，或重新打开终端后运行 hdu setup。\n' "$(npm prefix -g)/bin"

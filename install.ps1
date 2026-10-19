@@ -1,6 +1,6 @@
 # Install the latest hdu-cli release on Windows:
 #   irm https://raw.githubusercontent.com/sjsispp/hdu-cli/main/install.ps1 | iex
-# Set $env:HDU_CLI_VERSION = "v0.4.0" to install a specific release.
+# Set $env:HDU_CLI_VERSION = "v0.4.0" to install a specific release, $env:HDU_CLI_SKIP_SKILLS = "1" to skip agent skills.
 $ErrorActionPreference = "Stop"
 
 $repo = "sjsispp/hdu-cli"
@@ -33,6 +33,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if (Get-Command hdu -ErrorAction SilentlyContinue) {
+  # Agent skills let Claude Code, Codex and others use hdu from any directory; HDU_CLI_SKIP_SKILLS=1 skips this.
+  if (-not $env:HDU_CLI_SKIP_SKILLS) {
+    hdu skill install
+    if ($LASTEXITCODE -ne 0) { Write-Warning "技能安装失败，可稍后运行 hdu skill install。" }
+  }
   Write-Host "`n安装完成：hdu $(hdu --version)`n运行 hdu setup 开始首次使用引导。"
 } else {
   Write-Host "`n安装完成，请重新打开终端后运行 hdu setup。"

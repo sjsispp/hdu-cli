@@ -5,6 +5,8 @@ import QRCode from "qrcode";
 import { authStatus, loginWithBrowser, loginWithQr, SERVICES, type ServiceId } from "./auth.js";
 import { HduError } from "./errors.js";
 import { secretStore } from "./secret-store.js";
+import { installedSkillsVersion, installSkills } from "./skill.js";
+import { CLI_VERSION } from "./version.js";
 
 export type LoginMethod = "qr" | "browser";
 
@@ -73,7 +75,7 @@ export async function runSetup(options: { method?: LoginMethod; timeoutMs: numbe
     console.log("欢迎使用 hdu-cli —— 杭州电子科技大学信息命令行工具。");
     console.log("本工具只读：不会选课、报名、投递简历或提交任何申请，也不会读取或保存你的密码。\n");
 
-    console.log("[1/3] 检查运行环境");
+    console.log("[1/4] 检查运行环境");
     const store = secretStore();
     if (!store) {
       console.log("  当前系统暂不支持加密保存登录会话（支持 macOS 和 Windows）。");
@@ -89,7 +91,7 @@ export async function runSetup(options: { method?: LoginMethod; timeoutMs: numbe
       console.log("  在项目目录运行 npm run build && npm link 后即可在任意目录使用 hdu。");
     }
 
-    console.log("\n[2/3] 登录杭电统一身份认证");
+    console.log("\n[2/4] 登录杭电统一身份认证");
     const before = await authStatus();
     let shouldLogin = !before.sso;
     if (before.sso) {
@@ -115,7 +117,21 @@ export async function runSetup(options: { method?: LoginMethod; timeoutMs: numbe
       await performLogin(method, options.timeoutMs);
     }
 
-    console.log("\n[3/3] 完成");
+    console.log("\n[3/4] 智能体技能");
+    const installedSkills = installedSkillsVersion();
+    if (installedSkills) {
+      if (installedSkills !== CLI_VERSION) await installSkills();
+      console.log(`  hdu 技能已${installedSkills === CLI_VERSION ? "是最新" : `从 ${installedSkills} 更新到 ${CLI_VERSION}`}。`);
+    } else {
+      const answer = await ask("  安装 hdu 技能，让 Claude Code、Codex 等智能体能在任意目录使用 hdu？(Y/n) ");
+      if (answer !== undefined && !/^n(o)?$/i.test(answer.trim())) {
+        for (const location of (await installSkills()).locations) console.log(`  ${location.agent}：${location.path}`);
+      } else {
+        console.log("  已跳过，之后可以运行 hdu skill install。");
+      }
+    }
+
+    console.log("\n[4/4] 完成");
     const after = shouldLogin ? await authStatus() : before;
     console.log(`  统一身份认证：${after.sso ? "已登录" : "未登录"}`);
     printServices(after.services);
